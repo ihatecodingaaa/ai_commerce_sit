@@ -47,16 +47,22 @@
 
 <ul class="review-list">
   {% for r in reviews %}
-  <li class="review-card">
+  <li class="review-card" data-review-id="{{ r.id }}" data-rating="{{ r.rating }}">
     <div class="review-head">
       <span class="avatar">{{ r.username[0]|upper }}</span>
       <strong>{{ r.username }}</strong>
-      <span class="stars" style="font-size:0.75rem">{{ ('&#9733;' * r.rating) | safe }}{{ ('&#9734;' * (5 - r.rating)) | safe }}</span>
+      <span class="stars review-stars" style="font-size:0.75rem">{{ ('&#9733;' * r.rating) | safe }}{{ ('&#9734;' * (5 - r.rating)) | safe }}</span>
+      {% if user and r.user_id == user.id %}
+      <div class="review-actions">
+        <button type="button" class="icon-btn edit-review" title="Edit your review" aria-label="Edit review">&#9998;</button>
+        <button type="button" class="icon-btn delete-review" title="Delete your review" aria-label="Delete review">&#128465;</button>
+      </div>
+      {% endif %}
     </div>
-    <p>{{ r.body }}</p>
+    <p class="review-body-text">{{ r.body }}</p>
   </li>
   {% else %}
-  <li class="empty-state">No reviews yet &mdash; be the first to share your thoughts.</li>
+  <li class="empty-state" id="review-empty-state">No reviews yet &mdash; be the first to share your thoughts.</li>
   {% endfor %}
 </ul>
 
@@ -85,6 +91,118 @@ document.getElementById('review-form')?.addEventListener('submit', async (e) => 
   } catch (err) {
     showToast('Network error submitting review.', 'error');
     btn.disabled = false;
+  }
+});
+
+// --- Edit / delete your own reviews -------------------------------------
+const reviewList = document.querySelector('.review-list');
+
+function renderStars(rating) {
+  return '★'.repeat(rating) + '☆'.repeat(5 - rating);
+}
+
+function enterEditMode(card) {
+  if (card.querySelector('.review-edit-form')) return; // already editing
+  const bodyEl = card.querySelector('.review-body-text');
+  const actionsEl = card.querySelector('.review-actions');
+  const currentBody = bodyEl.textContent;
+  const currentRating = card.dataset.rating;
+
+  const form = document.createElement('form');
+  form.className = 'review-edit-form';
+  form.innerHTML = `
+    <select class="edit-rating" style="max-width:8rem">
+      <option value="5">&#9733;&#9733;&#9733;&#9733;&#9733; 5</option>
+      <option value="4">&#9733;&#9733;&#9733;&#9733; 4</option>
+      <option value="3">&#9733;&#9733;&#9733; 3</option>
+      <option value="2">&#9733;&#9733; 2</option>
+      <option value="1">&#9733; 1</option>
+    </select>
+    <textarea class="edit-body" rows="3"></textarea>
+    <div class="field-row" style="margin-top:0.5rem">
+      <button type="submit" class="btn btn-primary btn-sm">Save</button>
+      <button type="button" class="btn btn-secondary btn-sm cancel-edit">Cancel</button>
+    </div>
+  `;
+  form.querySelector('.edit-body').value = currentBody;
+  form.querySelector('.edit-rating').value = currentRating;
+
+  bodyEl.hidden = true;
+  if (actionsEl) actionsEl.hidden = true;
+  card.appendChild(form);
+  form.querySelector('.edit-body').focus();
+
+  form.querySelector('.cancel-edit').addEventListener('click', () => exitEditMode(card));
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const reviewId = card.dataset.reviewId;
+    const rating = form.querySelector('.edit-rating').value;
+    const body = form.querySelector('.edit-body').value.trim();
+    if (!body) { showToast('Review cannot be empty.', 'error'); return; }
+    const saveBtn = form.querySelector('button[type="submit"]');
+    saveBtn.disabled = true;
+    try {
+      const res = await fetch(`/api/reviews/${reviewId}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({rating, body}),
+      });
+      if (res.ok) {
+        card.dataset.rating = rating;
+        bodyEl.textContent = body;
+        card.querySelector('.review-stars').innerHTML = renderStars(parseInt(rating, 10));
+        exitEditMode(card);
+        showToast('Review updated.', 'success');
+      } else {
+        showToast('Error updating review.', 'error');
+        saveBtn.disabled = false;
+      }
+    } catch (err) {
+      showToast('Network error updating review.', 'error');
+      saveBtn.disabled = false;
+    }
+  });
+}
+
+function exitEditMode(card) {
+  const form = card.querySelector('.review-edit-form');
+  if (form) form.remove();
+  card.querySelector('.review-body-text').hidden = false;
+  const actionsEl = card.querySelector('.review-actions');
+  if (actionsEl) actionsEl.hidden = false;
+}
+
+reviewList?.addEventListener('click', async (e) => {
+  const editBtn = e.target.closest('.edit-review');
+  const deleteBtn = e.target.closest('.delete-review');
+  if (editBtn) {
+    enterEditMode(editBtn.closest('.review-card'));
+    return;
+  }
+  if (deleteBtn) {
+    const card = deleteBtn.closest('.review-card');
+    if (!confirm('Delete this review? This cannot be undone.')) return;
+    const reviewId = card.dataset.reviewId;
+    try {
+      const res = await fetch(`/api/reviews/${reviewId}`, { method: 'DELETE' });
+      if (res.ok) {
+        card.style.transition = 'opacity 180ms ease, transform 180ms ease';
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(-8px)';
+        setTimeout(() => {
+          card.remove();
+          if (!reviewList.querySelector('.review-card')) {
+            reviewList.innerHTML = '<li class="empty-state">No reviews yet &mdash; be the first to share your thoughts.</li>';
+          }
+        }, 180);
+        showToast('Review deleted.', 'success');
+      } else {
+        showToast('Error deleting review.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error deleting review.', 'error');
+    }
   }
 });
 

@@ -85,6 +85,7 @@ def handle_chat_message(user: dict, user_message: str, request_id: str) -> str:
     log_event("chatbot_request", user_id=user["id"], request_id=request_id, message_len=len(user_message))
 
     final_text = None
+    final_turn_recorded = False
     for _ in range(MAX_TOOL_ITERATIONS):
         try:
             message = chat(history, tools=TOOL_SCHEMAS)
@@ -101,6 +102,7 @@ def handle_chat_message(user: dict, user_message: str, request_id: str) -> str:
 
         if not tool_calls:
             final_text = message.get("content", "")
+            final_turn_recorded = True
             break
 
         for call in tool_calls:
@@ -130,7 +132,11 @@ def handle_chat_message(user: dict, user_message: str, request_id: str) -> str:
     if final_text is None:
         final_text = "Sorry, I wasn't able to finish handling that request. Please try rephrasing."
 
-    history.append({"role": "assistant", "content": final_text})
+    if not final_turn_recorded:
+        # Only the error/exhausted-iterations paths reach here -- the normal
+        # path already appended the model's own assistant message above, so
+        # appending it again would duplicate every reply in history.
+        history.append({"role": "assistant", "content": final_text})
     if len(history) > MAX_HISTORY_MESSAGES:
         _conversations[user["id"]] = [history[0]] + history[-(MAX_HISTORY_MESSAGES - 1):]
 
@@ -140,3 +146,19 @@ def handle_chat_message(user: dict, user_message: str, request_id: str) -> str:
 
 def reset_conversation(user_id: int):
     _conversations.pop(user_id, None)
+
+
+def get_visible_history(user_id: int) -> list[dict]:
+    """Return just the user/assistant turns (no system prompt, no raw tool
+    results) so the frontend can re-render a conversation after a page
+    navigation. Conversation state already lives server-side per user_id
+    (see module docstring) -- this just exposes the customer-facing half of
+    it, the same content that already appeared in that customer's own chat
+    widget, nothing new.
+    """
+    history = _conversations.get(user_id, [])
+    return [
+        {"role": m["role"], "content": m.get("content", "")}
+        for m in history
+        if m.get("role") in ("user", "assistant") and m.get("content")
+    ]

@@ -3,9 +3,22 @@ import uuid
 from flask import Blueprint, jsonify, request
 
 from app.auth import current_user, require_login
-from app.chatbot.agent import handle_chat_message, reset_conversation
+from app.chatbot.agent import get_visible_history, handle_chat_message, reset_conversation
 
 bp = Blueprint("api_chat", __name__, url_prefix="/api")
+
+
+@bp.route("/chat/history", methods=["GET"])
+@require_login
+def chat_history():
+    """Returns the logged-in customer's own conversation so the chat widget
+    can re-render it after a page navigation. Conversation state already
+    lives server-side per user_id (app/chatbot/agent.py) -- this just reads
+    it back, scoped to the calling session the same way every other
+    customer-data endpoint is.
+    """
+    user = current_user()
+    return jsonify({"messages": get_visible_history(user["id"])})
 
 
 @bp.route("/chat", methods=["POST"])

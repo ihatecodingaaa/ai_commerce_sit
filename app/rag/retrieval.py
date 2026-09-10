@@ -39,6 +39,29 @@ def index_content_as_kb(title: str, body: str, source: str, source_id: int, visi
     )
 
 
+def update_kb_content(source: str, source_id: int, title: str = None, body: str = None):
+    """Update the KB article mirroring a piece of source content (e.g. an
+    edited review) so retrieval always reflects current content -- same
+    trust-boundary property as index_content_as_kb: nothing here sanitizes
+    the new body either.
+    """
+    if title is not None:
+        execute(
+            "UPDATE kb_articles SET title = ? WHERE source = ? AND source_id = ?",
+            (title, source, source_id),
+        )
+    if body is not None:
+        execute(
+            "UPDATE kb_articles SET body = ? WHERE source = ? AND source_id = ?",
+            (body, source, source_id),
+        )
+
+
+def delete_kb_content(source: str, source_id: int):
+    """Remove the KB article(s) mirroring a piece of deleted source content."""
+    execute("DELETE FROM kb_articles WHERE source = ? AND source_id = ?", (source, source_id))
+
+
 def search_articles(query: str, visibility_filter: str | None = "public", limit: int = 5):
     """Score every kb_articles row against `query` by term overlap.
 

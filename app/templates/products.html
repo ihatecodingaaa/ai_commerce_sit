@@ -14,16 +14,16 @@
 
 <div class="product-grid stagger">
   {% for p in products %}
-  <div class="product-card">
+  <a class="product-card" href="/products/{{ p.id }}">
     <div class="product-thumb thumb-{{ loop.index0 % 6 }}">{{ p.name[0]|upper }}</div>
     <div class="product-card-body">
       <span class="category-badge">{{ p.category }}</span>
-      <h3><a href="/products/{{ p.id }}">{{ p.name }}</a></h3>
+      <h3>{{ p.name }}</h3>
       <p class="desc">{{ p.description[:100] }}{% if p.description|length > 100 %}&hellip;{% endif %}</p>
       <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
       <div class="price">${{ "%.2f"|format(p.price_cents / 100) }}</div>
     </div>
-  </div>
+  </a>
   {% endfor %}
 </div>
 {% endblock %}

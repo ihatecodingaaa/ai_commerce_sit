@@ -16,8 +16,15 @@ throughout.
 
 `get_current_plaintext_for_admin()` mirrors a real secret manager's
 authorized "get secret value" administrative API (e.g. AWS Secrets Manager
-GetSecretValue) -- available to trusted server-side/instructor code and
-tests, never exposed through any customer- or chatbot-facing route.
+GetSecretValue) -- available to trusted server-side code running in the
+*same process* (this lab's test suite uses it that way). It is NOT a CLI
+or cross-process lookup: `docker compose exec app python -c "..."` starts
+a brand-new process with an empty cache, so it will always return None
+there. That's intentional, not a bug -- there is deliberately no
+always-available "just ask the app" shortcut. See
+docs/instructor-guide.md's verification checklist for how to actually
+recover the current value from outside the running process (read it the
+same way the lab's ticket-paste vulnerability discloses it).
 """
 import hashlib
 import hmac

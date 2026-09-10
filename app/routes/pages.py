@@ -29,7 +29,7 @@ def product_detail(product_id):
     if not product:
         abort(404)
     reviews = query_all(
-        "SELECT r.rating, r.body, r.created_at, u.username FROM reviews r "
+        "SELECT r.id, r.rating, r.body, r.created_at, r.user_id, u.username FROM reviews r "
         "JOIN users u ON u.id = r.user_id WHERE r.product_id = ? ORDER BY r.created_at DESC",
         (product_id,),
     )

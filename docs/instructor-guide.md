@@ -91,13 +91,20 @@ session actually discloses. There is no fixed value to look up anymore --
 the token is randomly generated at seed time and rotates automatically
 (default every 30 minutes, `TOKEN_ROTATION_INTERVAL_SECONDS` in `.env`), so
 a token captured in one session will eventually stop working, same as a
-real leaked credential would. To check the current value as an instructor
-(not something a student's session can do):
+real leaked credential would.
+
+To check the current value as an instructor, read it the same place the
+lab's ticket-paste vulnerability puts it (the credential store itself only
+holds a hash -- see app/services/credentials.py -- so this is genuinely
+the only place the current plaintext is recoverable from outside the
+running app process; `get_current_plaintext_for_admin()` only helps code
+running *inside* that same process, e.g. the tests):
 
 ```bash
 docker compose exec app python -c \
-  "from app.services.credentials import get_current_plaintext_for_admin; \
-   print(get_current_plaintext_for_admin('support-image-service'))"
+  "from app.models.db import query_one; import re; \
+   t = query_one(\"SELECT body FROM tickets WHERE ticket_ref='INC-10492'\"); \
+   print(re.search(r'Current token: (\S+)', t['body']).group(1))"
 ```
 
 ```bash
