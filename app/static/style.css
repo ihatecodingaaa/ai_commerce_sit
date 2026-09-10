@@ -246,7 +246,7 @@ a { color: var(--brand-700); }
    that pins it to the top of the row instead of centering it, which is
    exactly the "floats higher" misalignment. Override just for this context. */
 .profile-trigger .category-badge { align-self: center; }
-.profile-caret { font-size: 0.65rem; color: var(--text-faint); transition: transform var(--fast); }
+.profile-caret { font-size: 1.05rem; line-height: 1; margin-left: 0.1rem; color: var(--text-faint); transition: transform var(--fast); }
 .profile-trigger[aria-expanded="true"] .profile-caret { transform: rotate(180deg); }
 
 .profile-dropdown {
