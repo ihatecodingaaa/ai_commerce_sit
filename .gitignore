@@ -20,6 +20,10 @@ uploads/*
 uploads/images/*
 !uploads/images/.gitkeep
 
+# Admin-uploaded product photos (legitimate, separate from uploads/ above)
+media/product_photos/*
+!media/product_photos/.gitkeep
+
 # Python
 __pycache__/
 *.pyc

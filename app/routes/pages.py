@@ -1,6 +1,7 @@
-from flask import Blueprint, abort, redirect, render_template, url_for
+from flask import Blueprint, abort, redirect, render_template, send_from_directory, url_for
 
 from app.auth import current_user
+from app.config import config
 from app.models.db import query_all, query_one
 
 bp = Blueprint("pages", __name__)
@@ -11,6 +12,17 @@ def index():
     return redirect(url_for("pages.products"))
 
 
+@bp.route("/product-photos/<filename>")
+def product_photo(filename):
+    """Serves admin-uploaded product photos. Public/unauthenticated on
+    purpose -- these are storefront images, same trust level as any other
+    product page content. Filenames are always server-generated
+    (uuid4 + sniffed extension, see app/services/product_photos.py), and
+    send_from_directory itself rejects path traversal regardless.
+    """
+    return send_from_directory(config.PRODUCT_PHOTO_DIR, filename)
+
+
 @bp.route("/about")
 def about():
     employees = query_all("SELECT name, title, department FROM employees ORDER BY id")
@@ -19,7 +31,9 @@ def about():
 
 @bp.route("/products")
 def products():
-    rows = query_all("SELECT id, name, category, price_cents, description FROM products ORDER BY id")
+    rows = query_all(
+        "SELECT id, name, category, price_cents, description, image_path FROM products ORDER BY id"
+    )
     return render_template("products.html", user=current_user(), products=rows)
 
 

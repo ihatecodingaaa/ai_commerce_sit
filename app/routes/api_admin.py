@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, request
 from app.auth import current_user, require_admin
 from app.logging_setup import log_event
 from app.models.db import db_cursor, execute, query_one
+from app.services.product_photos import delete_product_photo, save_product_photo
 
 bp = Blueprint("api_admin", __name__, url_prefix="/api/admin")
 
@@ -42,12 +43,26 @@ def create_product():
     if error:
         return jsonify({"error": error}), 400
 
+    image_path = None
+    photo = request.files.get("photo")
+    if photo and photo.filename:
+        try:
+            image_path = save_product_photo(photo)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
     product_id = execute(
-        "INSERT INTO products (name, category, price_cents, description) VALUES (?, ?, ?, ?)",
-        (product["name"], product["category"], product["price_cents"], product["description"]),
+        "INSERT INTO products (name, category, price_cents, description, image_path) VALUES (?, ?, ?, ?, ?)",
+        (product["name"], product["category"], product["price_cents"], product["description"], image_path),
     )
-    log_event("admin_product_created", admin_id=user["id"], product_id=product_id, request_id=request_id)
-    return jsonify({"product_id": product_id, **product}), 201
+    log_event(
+        "admin_product_created",
+        admin_id=user["id"],
+        product_id=product_id,
+        has_photo=image_path is not None,
+        request_id=request_id,
+    )
+    return jsonify({"product_id": product_id, "image_path": image_path, **product}), 201
 
 
 @bp.route("/products/<int:product_id>", methods=["PUT"])
@@ -56,7 +71,7 @@ def update_product(product_id):
     user = current_user()
     request_id = uuid.uuid4().hex[:12]
 
-    existing = query_one("SELECT id FROM products WHERE id = ?", (product_id,))
+    existing = query_one("SELECT id, image_path FROM products WHERE id = ?", (product_id,))
     if not existing:
         return jsonify({"error": "product not found"}), 404
 
@@ -65,12 +80,32 @@ def update_product(product_id):
     if error:
         return jsonify({"error": error}), 400
 
+    image_path = existing["image_path"]
+    photo = request.files.get("photo")
+    remove_photo = str(data.get("remove_photo", "")).strip().lower() in ("1", "true", "yes", "on")
+    if photo and photo.filename:
+        try:
+            new_image_path = save_product_photo(photo)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        delete_product_photo(image_path)
+        image_path = new_image_path
+    elif remove_photo and image_path:
+        delete_product_photo(image_path)
+        image_path = None
+
     execute(
-        "UPDATE products SET name = ?, category = ?, price_cents = ?, description = ? WHERE id = ?",
-        (product["name"], product["category"], product["price_cents"], product["description"], product_id),
+        "UPDATE products SET name = ?, category = ?, price_cents = ?, description = ?, image_path = ? WHERE id = ?",
+        (product["name"], product["category"], product["price_cents"], product["description"], image_path, product_id),
     )
-    log_event("admin_product_updated", admin_id=user["id"], product_id=product_id, request_id=request_id)
-    return jsonify({"product_id": product_id, **product})
+    log_event(
+        "admin_product_updated",
+        admin_id=user["id"],
+        product_id=product_id,
+        has_photo=image_path is not None,
+        request_id=request_id,
+    )
+    return jsonify({"product_id": product_id, "image_path": image_path, **product})
 
 
 @bp.route("/products/<int:product_id>", methods=["DELETE"])
@@ -85,7 +120,7 @@ def delete_product(product_id):
     user = current_user()
     request_id = uuid.uuid4().hex[:12]
 
-    existing = query_one("SELECT id FROM products WHERE id = ?", (product_id,))
+    existing = query_one("SELECT id, image_path FROM products WHERE id = ?", (product_id,))
     if not existing:
         return jsonify({"error": "product not found"}), 404
 
@@ -105,6 +140,8 @@ def delete_product(product_id):
         cur.execute("DELETE FROM reviews WHERE product_id = ?", (product_id,))
         cur.execute("DELETE FROM orders WHERE product_id = ?", (product_id,))
         cur.execute("DELETE FROM products WHERE id = ?", (product_id,))
+
+    delete_product_photo(existing["image_path"])
 
     log_event(
         "admin_product_deleted",

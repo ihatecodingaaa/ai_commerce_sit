@@ -22,6 +22,6 @@ def index():
 @require_admin_page
 def products():
     rows = query_all(
-        "SELECT id, name, category, price_cents, description FROM products ORDER BY id"
+        "SELECT id, name, category, price_cents, description, image_path FROM products ORDER BY id"
     )
     return render_template("admin_products.html", user=current_user(), products=rows)

@@ -21,6 +21,7 @@ def create_app() -> Flask:
 
     os.makedirs(config.LOG_DIR, exist_ok=True)
     os.makedirs(config.UPLOAD_DIR, exist_ok=True)
+    os.makedirs(config.PRODUCT_PHOTO_DIR, exist_ok=True)
     os.makedirs(os.path.dirname(config.DATABASE_PATH), exist_ok=True)
 
     from app.routes.auth_routes import bp as auth_bp
