@@ -59,10 +59,10 @@ def seed(conn: sqlite3.Connection):
     # `photo` is a filename under app/static/team/ -- placeholders shipped
     # with the repo; see app/static/team/README.md for how to swap them.
     employees = [
-        ("Alice Tan", "Head of Customer Operations", "Customer Operations", "alice.tan@shoplite-lab.test", "alice-tan.svg"),
-        ("Priya Nair", "Platform Engineer", "Infrastructure", "priya.nair@shoplite-lab.test", "priya-nair.svg"),
-        ("Marcus Webb", "Site Reliability Engineer", "Infrastructure", "marcus.webb@shoplite-lab.test", "marcus-webb.svg"),
-        ("Dana Okafor", "Support Team Lead", "Customer Operations", "dana.okafor@shoplite-lab.test", "dana-okafor.svg"),
+        ("Alice Tan", "Head of Customer Operations", "Customer Operations", "alice.tan@shoplite-lab.test", "alice-tan.jpg"),
+        ("Priya Nair", "Platform Engineer", "Infrastructure", "priya.nair@shoplite-lab.test", "priya-nair.jpg"),
+        ("Marcus Webb", "Site Reliability Engineer", "Infrastructure", "marcus.webb@shoplite-lab.test", "marcus-webb.jpg"),
+        ("Dana Okafor", "Support Team Lead", "Customer Operations", "dana.okafor@shoplite-lab.test", "dana-okafor.jpg"),
     ]
     emp_ids = {}
     for name, title, dept, email, photo in employees:
