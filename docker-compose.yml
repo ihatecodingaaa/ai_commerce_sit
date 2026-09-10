@@ -37,8 +37,8 @@ services:
     build: ./image-service
     environment:
       SERVICE_TOKEN: ${SERVICE_TOKEN:-lab_service_token_only_8f3d2a7c}
-    expose:
-      - "8000"
+    ports:
+      - "127.0.0.1:8081:8000"
     networks: [lab]
 
 volumes:
