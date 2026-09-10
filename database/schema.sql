@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS images;
 DROP TABLE IF EXISTS kb_articles;
 DROP TABLE IF EXISTS tickets;
 DROP TABLE IF EXISTS reviews;
+DROP TABLE IF EXISTS cart_items;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS products;
 DROP TABLE IF EXISTS employees;
@@ -20,13 +21,13 @@ CREATE TABLE users (
     password_hash TEXT NOT NULL,
     full_name     TEXT NOT NULL,
     role          TEXT NOT NULL DEFAULT 'customer',   -- 'customer' | 'admin'
-    -- Preset key only (e.g. 'fox') -- see app/avatars.py::PRESET_AVATARS.
-    -- Deliberately NOT a file path: profile pictures are chosen from a
-    -- fixed, server-defined library, not uploaded, so the account-editing
-    -- feature never becomes a second file-upload surface. The only
-    -- intentional file-upload vulnerability in this lab stays the one
-    -- reachable via the leaked support-image-service token.
-    avatar        TEXT NOT NULL DEFAULT 'fox',
+    -- Preset key (e.g. 'fox') or 'letter' -- see app/avatars.py. Deliberately
+    -- NOT a file path: profile pictures are chosen from a fixed,
+    -- server-defined library, not uploaded, so the account-editing feature
+    -- never becomes a second file-upload surface. The only intentional
+    -- file-upload vulnerability in this lab stays the one reachable via
+    -- the leaked support-image-service token.
+    avatar        TEXT NOT NULL DEFAULT 'letter',
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -38,7 +39,10 @@ CREATE TABLE employees (
     name        TEXT NOT NULL,
     title       TEXT NOT NULL,
     department  TEXT NOT NULL,
-    email       TEXT NOT NULL
+    email       TEXT NOT NULL,
+    -- Filename under app/static/team/ -- a placeholder shipped with the
+    -- repo; see that directory's README for how to swap in a real photo.
+    photo       TEXT NOT NULL
 );
 
 CREATE TABLE products (
@@ -58,6 +62,19 @@ CREATE TABLE orders (
     total_cents INTEGER NOT NULL,
     status      TEXT NOT NULL DEFAULT 'placed',
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Items sitting in a customer's cart, not yet checked out. Checkout
+-- (app/routes/api_cart.py) converts these into `orders` rows and clears
+-- them; nothing here becomes an order until the customer actually checks
+-- out, same as a real storefront.
+CREATE TABLE cart_items (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id),
+    product_id  INTEGER NOT NULL REFERENCES products(id),
+    quantity    INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(user_id, product_id)
 );
 
 -- Customer-controlled content. This is the injection surface: review bodies

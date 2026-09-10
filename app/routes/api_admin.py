@@ -112,7 +112,7 @@ def update_product(product_id):
 @require_admin
 def delete_product(product_id):
     """Hard-deletes a product and everything that references it (reviews,
-    their mirrored KB articles, and orders). This is intentionally
+    their mirrored KB articles, cart entries, and orders). This is intentionally
     destructive admin power for a demo storefront -- a real production
     system would soft-delete/deactivate a product with order history
     instead of cascading a hard delete through the order ledger.
@@ -138,6 +138,7 @@ def delete_product(product_id):
                 "DELETE FROM kb_articles WHERE source = 'review' AND source_id = ?", (review_id,)
             )
         cur.execute("DELETE FROM reviews WHERE product_id = ?", (product_id,))
+        cur.execute("DELETE FROM cart_items WHERE product_id = ?", (product_id,))
         cur.execute("DELETE FROM orders WHERE product_id = ?", (product_id,))
         cur.execute("DELETE FROM products WHERE id = ?", (product_id,))
 

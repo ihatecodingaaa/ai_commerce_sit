@@ -56,17 +56,19 @@ def seed(conn: sqlite3.Connection):
     )
 
     # ---- Employees (directory only, not login accounts) -----------------
+    # `photo` is a filename under app/static/team/ -- placeholders shipped
+    # with the repo; see app/static/team/README.md for how to swap them.
     employees = [
-        ("Alice Tan", "Head of Customer Operations", "Customer Operations", "alice.tan@shoplite-lab.test"),
-        ("Priya Nair", "Platform Engineer", "Infrastructure", "priya.nair@shoplite-lab.test"),
-        ("Marcus Webb", "Site Reliability Engineer", "Infrastructure", "marcus.webb@shoplite-lab.test"),
-        ("Dana Okafor", "Support Team Lead", "Customer Operations", "dana.okafor@shoplite-lab.test"),
+        ("Alice Tan", "Head of Customer Operations", "Customer Operations", "alice.tan@shoplite-lab.test", "alice-tan.svg"),
+        ("Priya Nair", "Platform Engineer", "Infrastructure", "priya.nair@shoplite-lab.test", "priya-nair.svg"),
+        ("Marcus Webb", "Site Reliability Engineer", "Infrastructure", "marcus.webb@shoplite-lab.test", "marcus-webb.svg"),
+        ("Dana Okafor", "Support Team Lead", "Customer Operations", "dana.okafor@shoplite-lab.test", "dana-okafor.svg"),
     ]
     emp_ids = {}
-    for name, title, dept, email in employees:
+    for name, title, dept, email, photo in employees:
         cur.execute(
-            "INSERT INTO employees (name, title, department, email) VALUES (?, ?, ?, ?)",
-            (name, title, dept, email),
+            "INSERT INTO employees (name, title, department, email, photo) VALUES (?, ?, ?, ?, ?)",
+            (name, title, dept, email, photo),
         )
         emp_ids[name] = cur.lastrowid
 
@@ -99,6 +101,12 @@ def seed(conn: sqlite3.Connection):
     cur.execute(
         "INSERT INTO orders (user_id, product_id, quantity, total_cents, status) VALUES (?, ?, 1, 8999, 'placed')",
         (customer_ids["bob.customer"], product_ids[2]),
+    )
+
+    # ---- Cart (seed one item so /cart isn't empty on first login) -----------
+    cur.execute(
+        "INSERT INTO cart_items (user_id, product_id, quantity) VALUES (?, ?, 1)",
+        (customer_ids["alice.customer"], product_ids[3]),
     )
 
     # ---- Reviews (legitimate seed reviews) ----------------------------------

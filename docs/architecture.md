@@ -15,7 +15,7 @@
 |                                                                                  |
 |  routes/  ---->  auth.py (session, require_login)                              |
 |             |                                                                   |
-|             +--> pages.py, api_orders.py, api_support.py, api_products.py       |
+|             +--> pages.py, api_cart.py, api_support.py, api_products.py       |
 |             |       (every handler scopes queries to session user_id)          |
 |             |                                                                   |
 |             +--> api_chat.py --> chatbot/agent.py --> chatbot/ollama_client.py  |

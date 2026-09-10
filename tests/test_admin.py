@@ -105,8 +105,14 @@ def test_deleting_product_cascades_reviews_kb_and_orders(client):
     product_id = create.get_json()["product_id"]
 
     client.post("/login", data={"username": "alice.customer", "password": "Customer123!"})
-    order_resp = client.post("/api/orders", json={"product_id": product_id, "quantity": 1})
-    assert order_resp.status_code == 201
+    cart_resp = client.post("/api/cart", json={"product_id": product_id, "quantity": 1})
+    assert cart_resp.status_code == 201
+    checkout_resp = client.post("/api/cart/checkout")
+    assert checkout_resp.status_code == 201
+    # a second cart entry that's never checked out, to prove cart_items
+    # (not just orders) get cascaded too
+    cart_resp2 = client.post("/api/cart", json={"product_id": product_id, "quantity": 2})
+    assert cart_resp2.status_code == 201
     review_resp = client.post(
         f"/api/products/{product_id}/reviews", json={"rating": 5, "body": "cascade delete test review"}
     )
@@ -122,6 +128,7 @@ def test_deleting_product_cascades_reviews_kb_and_orders(client):
     assert query_one("SELECT id FROM reviews WHERE id = ?", (review_id,)) is None
     assert query_one("SELECT id FROM kb_articles WHERE id = ?", (kb_id,)) is None
     assert query_all("SELECT id FROM orders WHERE product_id = ?", (product_id,)) == []
+    assert query_all("SELECT id FROM cart_items WHERE product_id = ?", (product_id,)) == []
 
 
 # --- Product photos -------------------------------------------------------

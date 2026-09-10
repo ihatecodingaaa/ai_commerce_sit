@@ -1,11 +1,13 @@
+// Support chat, embedded directly in the /support page (not a floating
+// widget) so a page navigation can't abort an in-flight reply mid-request
+// -- staying on this page while the bot is "thinking" is a normal,
+// uninterrupted fetch instead of something a navigation could cut off.
 (function () {
-  const toggle = document.getElementById('chat-toggle');
-  const panel = document.getElementById('chat-panel');
-  const closeBtn = document.getElementById('chat-close');
   const form = document.getElementById('chat-form');
   const input = document.getElementById('chat-input');
   const log = document.getElementById('chat-log');
-  const sendBtn = form ? form.querySelector('button') : null;
+  if (!form || !input || !log) return;
+  const sendBtn = form.querySelector('button');
 
   function appendMessage(text, cls) {
     const div = document.createElement('div');
@@ -26,9 +28,9 @@
   }
 
   // Conversation state lives server-side per logged-in customer (see
-  // app/chatbot/agent.py) -- reload it here so the widget shows the same
-  // conversation after a page navigation instead of starting over.
-  async function loadHistory() {
+  // app/chatbot/agent.py) -- reload it so returning to this page shows the
+  // same conversation instead of starting over.
+  (async function loadHistory() {
     try {
       const res = await fetch('/api/chat/history');
       if (!res.ok) return;
@@ -42,22 +44,12 @@
     } catch (err) {
       appendMessage("Hi! I'm Shopilot, ShopLite's support assistant. Ask me about your orders, account, or products.", 'bot');
     }
-  }
-  const historyLoaded = loadHistory();
-
-  function open() {
-    panel.hidden = false;
-    input.focus();
-    log.scrollTop = log.scrollHeight;
-  }
-  toggle.addEventListener('click', () => { panel.hidden ? open() : (panel.hidden = true); });
-  closeBtn.addEventListener('click', () => { panel.hidden = true; });
+  })();
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const message = input.value.trim();
     if (!message) return;
-    await historyLoaded; // avoid racing the initial history render
     appendMessage(message, 'user');
     input.value = '';
     input.disabled = true;
@@ -75,7 +67,7 @@
       appendMessage(res.ok ? data.reply : ('Error: ' + (data.error || 'unknown')), 'bot');
     } catch (err) {
       typingEl.remove();
-      appendMessage('Error contacting support assistant.', 'bot');
+      appendMessage('Error contacting support assistant. Please stay on this page and try again.', 'bot');
     } finally {
       input.disabled = false;
       if (sendBtn) sendBtn.disabled = false;

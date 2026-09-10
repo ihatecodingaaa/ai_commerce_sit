@@ -7,7 +7,7 @@
 </div>
 
 <div class="card profile-card animate-in">
-  <span class="avatar profile-avatar {{ avatar_class(user.avatar) }}">{{ avatar_emoji(user.avatar) }}</span>
+  <span class="avatar profile-avatar {{ avatar_class(user.avatar) }}">{{ avatar_glyph(user.avatar, user.full_name) }}</span>
   <div>
     <h3 style="margin-bottom:0.15rem">{{ user.full_name }}</h3>
     <span class="muted">@{{ user.username }}</span>
@@ -28,6 +28,8 @@
   <form id="edit-account-form">
     <label>Profile photo</label>
     <div class="avatar-picker" id="avatar-picker">
+      <button type="button" class="avatar avatar-swatch avatar-letter {{ 'selected' if user.avatar == LETTER_AVATAR_KEY else '' }}"
+              data-avatar-key="{{ LETTER_AVATAR_KEY }}" title="Your initial" aria-label="Your initial">{{ user.full_name[0]|upper }}</button>
       {% for a in PRESET_AVATARS %}
       <button type="button" class="avatar avatar-swatch avatar-preset-{{ loop.index0 }} {{ 'selected' if a.key == user.avatar else '' }}"
               data-avatar-key="{{ a.key }}" title="{{ a.label }}" aria-label="{{ a.label }}">{{ a.emoji }}</button>
@@ -64,6 +66,29 @@
     </div>
   </form>
 </div>
+
+<div class="section-heading" style="margin-top:2rem;"><h2>Order history</h2></div>
+{% if orders %}
+<div class="data-table-wrap animate-in">
+  <table class="data-table">
+    <thead><tr><th>Order #</th><th>Product</th><th>Qty</th><th>Total</th><th>Status</th><th>Placed</th></tr></thead>
+    <tbody>
+    {% for o in orders %}
+      <tr>
+        <td>#{{ o.id }}</td>
+        <td>{{ o.product_name }}</td>
+        <td>{{ o.quantity }}</td>
+        <td>${{ "%.2f"|format(o.total_cents / 100) }}</td>
+        <td><span class="badge badge-{{ o.status }}">{{ o.status.replace('_', ' ') }}</span></td>
+        <td class="muted">{{ o.created_at }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state animate-in">No orders yet &mdash; add something to your <a href="/cart">cart</a> and check out.</div>
+{% endif %}
 
 <script>
 const editToggle = document.getElementById('edit-account-toggle');

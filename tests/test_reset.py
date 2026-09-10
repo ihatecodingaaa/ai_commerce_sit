@@ -3,14 +3,17 @@ from database import seed as seed_module
 
 
 def test_reset_restores_known_seed_state(client, alice):
-    # perturb state: submit a review (indexes into kb) and an extra order
+    # perturb state: submit a review (indexes into kb) and add to the cart
     client.post("/api/products/1/reviews", json={"rating": 1, "body": "temporary perturbation"})
-    client.post("/api/orders", json={"product_id": 1, "quantity": 1})
+    client.post("/api/cart", json={"product_id": 1, "quantity": 1})
 
     before_reviews = len(query_all("SELECT id FROM reviews"))
     assert before_reviews >= 3  # 2 seed reviews + the one just added
 
     seed_module.main()
+
+    after_cart = query_all("SELECT id FROM cart_items")
+    assert len(after_cart) == 1  # back to exactly the one seeded cart item
 
     after_users = query_all("SELECT username FROM users ORDER BY username")
     assert [u["username"] for u in after_users] == ["admin", "alice.customer", "bob.customer"]

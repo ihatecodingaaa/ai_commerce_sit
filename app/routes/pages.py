@@ -25,7 +25,7 @@ def product_photo(filename):
 
 @bp.route("/about")
 def about():
-    employees = query_all("SELECT name, title, department FROM employees ORDER BY id")
+    employees = query_all("SELECT name, title, department, photo FROM employees ORDER BY id")
     return render_template("about.html", user=current_user(), employees=employees)
 
 
@@ -50,18 +50,18 @@ def product_detail(product_id):
     return render_template("product_detail.html", user=current_user(), product=product, reviews=reviews)
 
 
-@bp.route("/orders")
-def orders():
+@bp.route("/cart")
+def cart():
     user = current_user()
     if not user:
         return redirect(url_for("auth.login"))
     rows = query_all(
-        "SELECT o.id, o.quantity, o.total_cents, o.status, o.created_at, p.name AS product_name "
-        "FROM orders o JOIN products p ON p.id = o.product_id "
-        "WHERE o.user_id = ? ORDER BY o.created_at DESC",
+        "SELECT c.id, c.quantity, c.product_id, p.name AS product_name, p.price_cents, p.image_path "
+        "FROM cart_items c JOIN products p ON p.id = c.product_id "
+        "WHERE c.user_id = ? ORDER BY c.created_at DESC",
         (user["id"],),
     )
-    return render_template("orders.html", user=user, orders=rows)
+    return render_template("cart.html", user=user, cart_items=rows)
 
 
 @bp.route("/support")
@@ -82,4 +82,10 @@ def account():
     user = current_user()
     if not user:
         return redirect(url_for("auth.login"))
-    return render_template("account.html", user=user)
+    orders = query_all(
+        "SELECT o.id, o.quantity, o.total_cents, o.status, o.created_at, p.name AS product_name "
+        "FROM orders o JOIN products p ON p.id = o.product_id "
+        "WHERE o.user_id = ? ORDER BY o.created_at DESC",
+        (user["id"],),
+    )
+    return render_template("account.html", user=user, orders=orders)

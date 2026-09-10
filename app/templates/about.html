@@ -64,9 +64,18 @@
 </div>
 
 <h2 style="margin-top:2rem">Our team</h2>
-<ul class="employee-list stagger">
+<div class="team-grid stagger">
   {% for e in employees %}
-    <li><span class="avatar avatar-preset-{{ loop.index0 % 10 }}">{{ e.name[0]|upper }}</span> <div><strong>{{ e.name }}</strong><br><span class="muted" style="font-size:0.82rem">{{ e.title }} &middot; {{ e.department }}</span></div></li>
+  <div class="card team-card">
+    <div class="team-card-photo">
+      <img src="/static/team/{{ e.photo }}" alt="{{ e.name }}" loading="lazy">
+    </div>
+    <div class="team-card-body">
+      <strong>{{ e.name }}</strong>
+      <span class="muted" style="font-size:0.82rem">{{ e.title }}</span>
+      <span class="category-badge" style="margin-top:0.4rem">{{ e.department }}</span>
+    </div>
+  </div>
   {% endfor %}
-</ul>
+</div>
 {% endblock %}

@@ -28,7 +28,7 @@
         <a href="/products" class="{{ 'active' if request.path.startswith('/products') else '' }}">Products</a>
         <a href="/about" class="{{ 'active' if request.path == '/about' else '' }}">About</a>
         {% if user %}
-          <a href="/orders" class="{{ 'active' if request.path == '/orders' else '' }}">Orders</a>
+          <a href="/cart" class="{{ 'active' if request.path == '/cart' else '' }}">Cart</a>
           <a href="/support" class="{{ 'active' if request.path == '/support' else '' }}">Support</a>
           <a href="/account" class="{{ 'active' if request.path == '/account' else '' }}">Account</a>
           {% if user.role == 'admin' %}
@@ -40,7 +40,7 @@
         <button id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">&#127769;</button>
         {% if user %}
           <span class="hello-chip">
-            <span class="avatar {{ avatar_class(user.avatar) }}">{{ avatar_emoji(user.avatar) }}</span> {{ user.full_name.split(' ')[0] }}
+            <span class="avatar {{ avatar_class(user.avatar) }}">{{ avatar_glyph(user.avatar, user.full_name) }}</span> {{ user.full_name.split(' ')[0] }}
             <span class="category-badge">{{ 'Admin' if user.role == 'admin' else 'Customer' }}</span>
           </span>
           <form action="/logout" method="post" style="display:inline">
@@ -62,27 +62,7 @@
     </footer>
   </div>
 
-  {% if user %}
-  <div id="chat-widget">
-    <button id="chat-toggle"><span class="dot"></span> Support chat</button>
-    <div id="chat-panel" hidden>
-      <div class="chat-header">
-        <span class="chat-avatar">&#128172;</span>
-        <div>
-          <strong>Shopilot</strong>
-          <div class="chat-sub"><span class="dot"></span> ShopLite support assistant</div>
-        </div>
-        <button id="chat-close" aria-label="Close">&times;</button>
-      </div>
-      <div id="chat-log"></div>
-      <form id="chat-form">
-        <input id="chat-input" type="text" placeholder="Ask about your order, account, or products..." autocomplete="off">
-        <button type="submit" aria-label="Send">&#10148;</button>
-      </form>
-    </div>
-  </div>
-  <script src="/static/chat.js"></script>
-  {% endif %}
+  {% block scripts %}{% endblock %}
   <script src="/static/app.js"></script>
 </body>
 </html>

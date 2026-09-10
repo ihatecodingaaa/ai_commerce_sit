@@ -4,9 +4,24 @@
 <div class="section-heading">
   <h1>Support</h1>
 </div>
-<p class="muted">Need a quick answer? Use the support chat in the bottom-right corner &mdash; it can look up your orders and tickets directly. Or open a ticket below for anything that needs a human.</p>
+<p class="muted">Chat with Shopilot below, or open a ticket for anything that needs a human. The chat lives on this page so a reply in progress never gets cut off by navigating away &mdash; just stay here until it answers.</p>
 
-<div class="card animate-in" style="padding:1.1rem 1.25rem; margin: 1rem 0 1.75rem;">
+<div class="card chat-embed animate-in">
+  <div class="chat-header">
+    <span class="chat-avatar">&#128172;</span>
+    <div>
+      <strong>Shopilot</strong>
+      <div class="chat-sub"><span class="dot"></span> ShopLite support assistant</div>
+    </div>
+  </div>
+  <div id="chat-log"></div>
+  <form id="chat-form">
+    <input id="chat-input" type="text" placeholder="Ask about your order, account, or products..." autocomplete="off">
+    <button type="submit" aria-label="Send">&#10148;</button>
+  </form>
+</div>
+
+<div class="card animate-in" style="padding:1.1rem 1.25rem; margin: 0 0 1.75rem;">
   <h3 style="margin-bottom:0.75rem">Open a ticket</h3>
   <form id="ticket-form">
     <label>Subject</label>
@@ -66,3 +81,4 @@ document.getElementById('ticket-form')?.addEventListener('submit', async (e) => 
 });
 </script>
 {% endblock %}
+{% block scripts %}<script src="/static/chat.js"></script>{% endblock %}

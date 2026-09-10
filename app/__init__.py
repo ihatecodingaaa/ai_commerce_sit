@@ -9,10 +9,11 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.secret_key = config.SECRET_KEY
 
-    from app.avatars import PRESET_AVATARS, avatar_by_key, avatar_css_class
+    from app.avatars import PRESET_AVATARS, LETTER_AVATAR_KEY, avatar_css_class, avatar_glyph
 
     app.jinja_env.globals["PRESET_AVATARS"] = PRESET_AVATARS
-    app.jinja_env.globals["avatar_emoji"] = lambda key: avatar_by_key(key)["emoji"]
+    app.jinja_env.globals["LETTER_AVATAR_KEY"] = LETTER_AVATAR_KEY
+    app.jinja_env.globals["avatar_glyph"] = avatar_glyph
     app.jinja_env.globals["avatar_class"] = avatar_css_class
 
     @app.errorhandler(403)
@@ -34,7 +35,7 @@ def create_app() -> Flask:
     from app.routes.pages import bp as pages_bp
     from app.routes.admin import bp as admin_bp
     from app.routes.api_products import bp as products_bp
-    from app.routes.api_orders import bp as orders_bp
+    from app.routes.api_cart import bp as cart_bp
     from app.routes.api_support import bp as support_bp
     from app.routes.api_chat import bp as chat_bp
     from app.routes.api_images import bp as images_bp
@@ -46,7 +47,7 @@ def create_app() -> Flask:
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(products_bp)
-    app.register_blueprint(orders_bp)
+    app.register_blueprint(cart_bp)
     app.register_blueprint(support_bp)
     app.register_blueprint(chat_bp)
     app.register_blueprint(images_bp)

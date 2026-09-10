@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Your Cart - ShopLite{% endblock %}
+{% block content %}
+<div class="section-heading">
+  <h1>Your cart</h1>
+</div>
+
+{% if cart_items %}
+<div class="data-table-wrap animate-in" style="margin-bottom:1.25rem;">
+  <table class="data-table" id="cart-table">
+    <thead><tr><th></th><th>Product</th><th>Price</th><th>Qty</th><th>Line total</th><th></th></tr></thead>
+    <tbody>
+    {% for item in cart_items %}
+      <tr data-item-id="{{ item.id }}" data-price-cents="{{ item.price_cents }}">
+        <td>
+          {% if item.image_path %}
+          <img class="admin-thumb" src="/product-photos/{{ item.image_path }}" alt="">
+          {% else %}
+          <span class="admin-thumb admin-thumb-empty">&mdash;</span>
+          {% endif %}
+        </td>
+        <td><a href="/products/{{ item.product_id }}">{{ item.product_name }}</a></td>
+        <td>${{ "%.2f"|format(item.price_cents / 100) }}</td>
+        <td>
+          <input type="number" class="cart-qty" value="{{ item.quantity }}" min="1" style="width:4.5rem">
+        </td>
+        <td class="cart-line-total">${{ "%.2f"|format(item.price_cents * item.quantity / 100) }}</td>
+        <td><button type="button" class="icon-btn delete-review remove-cart-item" title="Remove">&#128465;</button></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card animate-in" style="padding:1.25rem 1.5rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+  <div>
+    <div class="muted" style="font-size:0.82rem;">Cart total</div>
+    <div id="cart-grand-total" style="font-size:1.4rem; font-weight:800;"></div>
+  </div>
+  <button id="checkout-btn" class="btn btn-primary">Checkout</button>
+</div>
+{% else %}
+<div class="empty-state animate-in">Your cart is empty &mdash; <a href="/products">browse products</a> to add something.</div>
+{% endif %}
+
+<script>
+function recomputeTotal() {
+  let total = 0;
+  document.querySelectorAll('#cart-table tbody tr').forEach((row) => {
+    const price = parseInt(row.dataset.priceCents, 10);
+    const qty = parseInt(row.querySelector('.cart-qty').value, 10) || 0;
+    const lineTotal = price * qty;
+    row.querySelector('.cart-line-total').textContent = '$' + (lineTotal / 100).toFixed(2);
+    total += lineTotal;
+  });
+  const totalEl = document.getElementById('cart-grand-total');
+  if (totalEl) totalEl.textContent = '$' + (total / 100).toFixed(2);
+}
+recomputeTotal();
+
+document.querySelectorAll('.cart-qty').forEach((input) => {
+  let debounceTimer;
+  input.addEventListener('input', () => {
+    recomputeTotal();
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      const row = input.closest('tr');
+      const itemId = row.dataset.itemId;
+      const quantity = Math.max(1, parseInt(input.value, 10) || 1);
+      input.value = quantity;
+      try {
+        const res = await fetch(`/api/cart/${itemId}`, {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({quantity}),
+        });
+        if (!res.ok) showToast('Error updating quantity.', 'error');
+      } catch (err) {
+        showToast('Network error updating quantity.', 'error');
+      }
+    }, 500);
+  });
+});
+
+document.querySelectorAll('.remove-cart-item').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const row = btn.closest('tr');
+    const itemId = row.dataset.itemId;
+    try {
+      const res = await fetch(`/api/cart/${itemId}`, { method: 'DELETE' });
+      if (res.ok) {
+        row.remove();
+        recomputeTotal();
+        if (!document.querySelector('#cart-table tbody tr')) location.reload();
+      } else {
+        showToast('Error removing item.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error removing item.', 'error');
+    }
+  });
+});
+
+document.getElementById('checkout-btn')?.addEventListener('click', async (e) => {
+  const btn = e.target;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const res = await fetch('/api/cart/checkout', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      showToast('Order placed! Check your Order History in Account.', 'success');
+      setTimeout(() => { window.location.href = '/account'; }, 900);
+    } else {
+      showToast(data.error || 'Error checking out.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Checkout';
+    }
+  } catch (err) {
+    showToast('Network error during checkout.', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Checkout';
+  }
+});
+</script>
+{% endblock %}
