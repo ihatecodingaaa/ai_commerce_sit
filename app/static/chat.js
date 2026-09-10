@@ -117,20 +117,21 @@
   }
 
   (async function loadHistory() {
+    // The greeting always renders first, every load -- it's a client-side
+    // fixture, not part of the stored conversation, so without this it
+    // would only ever show up before the very first message was ever
+    // sent and then disappear for good on every later visit/refresh.
+    appendMessage(GREETING, 'bot');
     try {
       const messages = await fetchHistory();
-      if (messages === null) return;
-      if (messages.length === 0) {
-        appendMessage(GREETING, 'bot');
-        return;
-      }
+      if (messages === null || messages.length === 0) return;
       renderNewMessages(messages);
       const last = messages[messages.length - 1];
       if (last && last.role === 'user') {
         pollForPendingReply(messages.length);
       }
     } catch (err) {
-      appendMessage(GREETING, 'bot');
+      // Greeting is already shown; nothing else to do.
     }
   })();
 

@@ -229,19 +229,44 @@ a { color: var(--brand-700); }
 }
 .auth-area { display: flex; gap: 0.6rem; align-items: center; flex-shrink: 0; }
 .auth-area a.btn, .auth-area .link-btn { white-space: nowrap; }
-.hello-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.88rem;
-  color: var(--text-muted);
-  font-weight: 600;
+.profile-menu { position: relative; }
+.profile-trigger {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.88rem; color: var(--text-muted); font-weight: 600;
+  background: none; border: 1px solid transparent; border-radius: 999px;
+  padding: 0.3rem 0.6rem 0.3rem 0.3rem; cursor: pointer;
+  transition: background var(--fast), border-color var(--fast);
 }
+.profile-trigger:hover, .profile-trigger[aria-expanded="true"] {
+  background: var(--surface-2); border-color: var(--border);
+}
+.profile-trigger-name { white-space: nowrap; }
 /* .category-badge normally sets align-self: flex-start for its usual home
    (the top of a column-flex card body) -- reused here in a row-flex chip,
    that pins it to the top of the row instead of centering it, which is
    exactly the "floats higher" misalignment. Override just for this context. */
-.hello-chip .category-badge { align-self: center; }
+.profile-trigger .category-badge { align-self: center; }
+.profile-caret { font-size: 0.65rem; color: var(--text-faint); transition: transform var(--fast); }
+.profile-trigger[aria-expanded="true"] .profile-caret { transform: rotate(180deg); }
+
+.profile-dropdown {
+  position: absolute; top: calc(100% + 0.5rem); right: 0; z-index: 50;
+  min-width: 200px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 0.4rem;
+  animation: popIn var(--fast) var(--ease) both;
+}
+.profile-dropdown[hidden] { display: none; }
+.profile-dropdown-item {
+  display: flex; align-items: center; gap: 0.55rem; width: 100%;
+  padding: 0.55rem 0.7rem; border-radius: var(--radius-sm); border: none;
+  background: none; color: var(--text); font-size: 0.88rem; font-weight: 600;
+  text-decoration: none; cursor: pointer; text-align: left; font-family: inherit;
+  transition: background var(--fast);
+}
+.profile-dropdown-item:hover { background: var(--surface-2); }
+.profile-dropdown-item.profile-dropdown-danger { color: var(--danger); }
+.profile-dropdown form { margin: 0; }
+.profile-dropdown-sep { height: 1px; background: var(--border); margin: 0.35rem 0.2rem; }
 .avatar {
   width: 28px; height: 28px;
   border-radius: 50%;
@@ -677,8 +702,8 @@ form { margin: 0; }
   flex-shrink: 0;
 }
 .chat-header .chat-avatar {
-  width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.18);
-  display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
+  width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
 }
 .chat-header strong { font-size: 0.92rem; display: block; }
 .chat-sub { font-size: 0.72rem; opacity: 0.8; display: flex; align-items: center; gap: 0.3rem; }
