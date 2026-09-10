@@ -1,0 +1,41 @@
+name: CTF validation
+
+on:
+  push:
+    branches: [main, feature/ai-security-ctf-lab]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build lab
+        run: docker compose build
+      - name: Start clean lab
+        run: |
+          docker compose down -v || true
+          docker compose up -d --build
+      - name: Wait for services
+        run: |
+          python - <<'PY'
+          import time, urllib.request
+          for url in ['http://127.0.0.1:8080/','http://127.0.0.1:8081/health']:
+              for _ in range(60):
+                  try:
+                      urllib.request.urlopen(url, timeout=2)
+                      break
+                  except Exception:
+                      time.sleep(1)
+              else:
+                  raise SystemExit(f'service unavailable: {url}')
+          PY
+      - name: Validate complete chain
+        run: python tests/validate.py
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Teardown
+        if: always()
+        run: docker compose down -v
