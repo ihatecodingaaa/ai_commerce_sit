@@ -108,6 +108,14 @@ CREATE TABLE tickets (
     -- Set by an admin via /admin/tickets (app/routes/api_admin_tickets.py).
     -- A single reply field, not a thread -- enough for this lab's scope.
     admin_reply   TEXT,
+    -- Optional screenshot an admin attached while working the ticket
+    -- (e.g. "here's what I see on my end"). Set via POST
+    -- /api/admin/tickets/<id>/screenshot, which stores the file through
+    -- the internal image-management service (app/services/image_client.py)
+    -- -- this is the legitimate, admin-only path into the same
+    -- support-image-service upload pipeline that /api/images/upload
+    -- exposes directly to anyone holding the service token.
+    screenshot_image_id INTEGER REFERENCES images(id),
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

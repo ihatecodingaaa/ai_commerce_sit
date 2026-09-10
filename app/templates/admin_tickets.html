@@ -36,6 +36,17 @@
     <label>Reply to customer</label>
     <textarea class="ticket-reply-input" rows="2" placeholder="Write a reply the customer will see on their ticket...">{{ t.admin_reply or '' }}</textarea>
     <button type="button" class="btn btn-primary btn-sm save-ticket" style="margin-top:0.6rem;">Save</button>
+
+    <div class="ticket-screenshot-row" style="margin-top:0.75rem;">
+      <label>Attach a screenshot (internal reference)</label>
+      {% if t.screenshot_image_id %}
+      <div style="margin:0.3rem 0;">
+        <img src="/api/admin/tickets/{{ t.id }}/screenshot" alt="Attached screenshot" style="max-width:220px; border-radius:var(--radius-sm); border:1px solid var(--border);">
+      </div>
+      {% endif %}
+      <input type="file" class="ticket-screenshot-input" accept="image/*" style="font-size:0.85rem;">
+      <button type="button" class="btn btn-secondary btn-sm upload-ticket-screenshot" style="margin-top:0.4rem;">Upload screenshot</button>
+    </div>
   </li>
   {% endfor %}
 </ul>
@@ -67,6 +78,38 @@ document.querySelectorAll('.save-ticket').forEach((btn) => {
       }
     } catch (err) {
       showToast('Network error updating ticket.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+});
+
+document.querySelectorAll('.upload-ticket-screenshot').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const card = btn.closest('.ticket-card');
+    const ticketId = card.dataset.ticketId;
+    const input = card.querySelector('.ticket-screenshot-input');
+    const file = input.files[0];
+    if (!file) {
+      showToast('Choose an image file first.', 'error');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/tickets/${ticketId}/screenshot`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        showToast('Screenshot attached.', 'success');
+        location.reload();
+      } else {
+        showToast('Error uploading screenshot.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error uploading screenshot.', 'error');
     } finally {
       btn.disabled = false;
     }

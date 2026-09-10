@@ -1,13 +1,19 @@
 """Admin support-ticket management. require_admin-gated, same as product
 management -- a customer session, no matter whose, never reaches this.
+
+Screenshot attachments (POST/GET .../screenshot) are the legitimate,
+admin-only entry point into the support-image-service upload pipeline --
+see app/services/image_client.py for how this backend calls that internal
+service on the admin's behalf.
 """
 import uuid
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, Response, jsonify, request
 
 from app.auth import current_user, require_admin
 from app.logging_setup import log_event
 from app.models.db import execute, query_one
+from app.services.image_client import fetch_screenshot, upload_screenshot
 
 bp = Blueprint("api_admin_tickets", __name__, url_prefix="/api/admin/tickets")
 
@@ -47,3 +53,52 @@ def update_ticket(ticket_id):
         request_id=request_id,
     )
     return jsonify({"status": "updated"})
+
+
+@bp.route("/<int:ticket_id>/screenshot", methods=["POST"])
+@require_admin
+def upload_ticket_screenshot(ticket_id):
+    admin = current_user()
+    request_id = uuid.uuid4().hex[:12]
+
+    ticket = query_one(
+        "SELECT id FROM tickets WHERE id = ? AND visibility = 'customer'", (ticket_id,)
+    )
+    if not ticket:
+        return jsonify({"error": "ticket not found"}), 404
+
+    file = request.files.get("file")
+    if not file or file.filename == "":
+        return jsonify({"error": "file field is required"}), 400
+
+    image_id = upload_screenshot(file)
+    if image_id is None:
+        return jsonify({"error": "screenshot service unavailable"}), 502
+
+    execute("UPDATE tickets SET screenshot_image_id = ? WHERE id = ?", (image_id, ticket_id))
+    log_event(
+        "admin_ticket_screenshot_uploaded",
+        admin_id=admin["id"],
+        ticket_id=ticket_id,
+        image_id=image_id,
+        request_id=request_id,
+    )
+    return jsonify({"image_id": image_id}), 201
+
+
+@bp.route("/<int:ticket_id>/screenshot", methods=["GET"])
+@require_admin
+def get_ticket_screenshot(ticket_id):
+    ticket = query_one(
+        "SELECT screenshot_image_id FROM tickets WHERE id = ? AND visibility = 'customer'",
+        (ticket_id,),
+    )
+    if not ticket or not ticket["screenshot_image_id"]:
+        return jsonify({"error": "no screenshot for this ticket"}), 404
+
+    result = fetch_screenshot(ticket["screenshot_image_id"])
+    if result is None:
+        return jsonify({"error": "screenshot service unavailable"}), 502
+
+    data, content_type = result
+    return Response(data, mimetype=content_type)

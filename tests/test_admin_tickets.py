@@ -3,7 +3,11 @@ a reply), scoped correctly (customer-visibility tickets only, never the
 internal engineering tickets), and that a customer session can never
 reach the admin ticket endpoints.
 """
+import io
+
 from app.models.db import query_one
+
+_PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
 
 
 def _create_ticket_as_alice(client):
@@ -73,3 +77,40 @@ def test_invalid_status_rejected(client):
     client.post("/login", data={"username": "admin", "password": "AdminLab123!"})
     resp = client.put(f"/api/admin/tickets/{ticket['id']}", json={"status": "not-a-real-status"})
     assert resp.status_code == 400
+
+
+def test_admin_can_attach_and_fetch_ticket_screenshot(client):
+    """The legitimate path into support-image-service: an admin session
+    (not a service token) drives the upload, via app/services/image_client.py
+    calling through to the same /api/images/upload the token protects.
+    """
+    ref = _create_ticket_as_alice(client)
+    ticket = query_one("SELECT id FROM tickets WHERE ticket_ref = ?", (ref,))
+
+    client.post("/login", data={"username": "admin", "password": "AdminLab123!"})
+    resp = client.post(
+        f"/api/admin/tickets/{ticket['id']}/screenshot",
+        data={"file": (io.BytesIO(_PNG_BYTES), "screenshot.png", "image/png")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 201
+    image_id = resp.get_json()["image_id"]
+
+    row = query_one("SELECT screenshot_image_id FROM tickets WHERE id = ?", (ticket["id"],))
+    assert row["screenshot_image_id"] == image_id
+
+    resp = client.get(f"/api/admin/tickets/{ticket['id']}/screenshot")
+    assert resp.status_code == 200
+    assert resp.data == _PNG_BYTES
+
+
+def test_customer_cannot_reach_ticket_screenshot_routes(client, alice):
+    ticket = query_one("SELECT id FROM tickets WHERE visibility = 'customer' LIMIT 1")
+    resp = client.post(
+        f"/api/admin/tickets/{ticket['id']}/screenshot",
+        data={"file": (io.BytesIO(_PNG_BYTES), "screenshot.png", "image/png")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 403
+    resp = client.get(f"/api/admin/tickets/{ticket['id']}/screenshot")
+    assert resp.status_code == 403
