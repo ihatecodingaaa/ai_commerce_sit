@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: commerce
+      POSTGRES_USER: commerce
+      POSTGRES_PASSWORD: commerce_lab_only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U commerce -d commerce"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [lab]
+
+  web:
+    build: ./web
+    environment:
+      DATABASE_URL: postgresql://commerce:commerce_lab_only@db:5432/commerce
+      SESSION_SECRET: synthetic-session-secret-lab-only
+      SERVICE_TOKEN: ${SERVICE_TOKEN:-lab_service_token_only_8f3d2a7c}
+      IMAGE_SERVICE_URL: http://image-service:8000
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-http://host.docker.internal:11434/v1}
+      LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-qwen2.5:3b}
+    depends_on:
+      db:
+        condition: service_healthy
+      image-service:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8080:8000"
+    networks: [lab]
+
+  image-service:
+    build: ./image-service
+    environment:
+      SERVICE_TOKEN: ${SERVICE_TOKEN:-lab_service_token_only_8f3d2a7c}
+    expose:
+      - "8000"
+    networks: [lab]
+
+volumes:
+  pgdata:
+
+networks:
+  lab:
+    internal: true
