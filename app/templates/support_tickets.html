@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Support Tickets - ShopLite{% endblock %}
+{% block content %}
+{% set active = 'tickets' %}
+<div class="section-heading">
+  <h1>Support tickets</h1>
+</div>
+<p class="muted" style="margin-top:-0.5rem;">Need something a human should look at? Open a ticket below. Prefer a quick answer first? Try the <a href="/support">chat</a>.</p>
+
+{% include "_support_subnav.html" %}
+
+<div class="card animate-in" style="padding:1.1rem 1.25rem; margin: 0 0 1.75rem; max-width:640px;">
+  <h3 style="margin-bottom:0.75rem">Open a new ticket</h3>
+  <form id="ticket-form">
+    <label>Subject</label>
+    <input id="ticket-subject" type="text" placeholder="Short summary of your issue">
+    <label>Details</label>
+    <textarea id="ticket-body" rows="3" placeholder="Describe your issue..."></textarea>
+    <button type="submit" class="btn btn-primary" style="margin-top:0.9rem">Submit ticket</button>
+  </form>
+</div>
+
+<div class="section-heading"><h2>Your tickets</h2></div>
+{% if tickets %}
+<ul class="ticket-list stagger">
+  {% for t in tickets %}
+  <li class="card ticket-card">
+    <div class="ticket-card-head">
+      <div>
+        <strong>{{ t.subject }}</strong>
+        <span class="muted" style="font-size:0.8rem; display:block;">{{ t.ticket_ref }} &middot; opened {{ t.created_at }}</span>
+      </div>
+      <span class="badge badge-{{ t.status }}">{{ t.status.replace('_', ' ') }}</span>
+    </div>
+    <p style="margin:0.6rem 0 0;">{{ t.body }}</p>
+    {% if t.admin_reply %}
+    <div class="ticket-reply">
+      <strong style="font-size:0.82rem;">&#128172; Support team reply</strong>
+      <p style="margin:0.3rem 0 0;">{{ t.admin_reply }}</p>
+    </div>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty-state">No tickets yet.</div>
+{% endif %}
+
+<script>
+document.getElementById('ticket-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button');
+  const subject = document.getElementById('ticket-subject').value;
+  const body = document.getElementById('ticket-body').value;
+  if (!subject.trim() || !body.trim()) { showToast('Fill in both fields first.', 'error'); return; }
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/tickets', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({subject, body})
+    });
+    if (res.ok) {
+      showToast('Ticket submitted! Refreshing...', 'success');
+      setTimeout(() => location.reload(), 700);
+    } else {
+      showToast('Error submitting ticket.', 'error');
+      btn.disabled = false;
+    }
+  } catch (err) {
+    showToast('Network error submitting ticket.', 'error');
+    btn.disabled = false;
+  }
+});
+</script>
+{% endblock %}

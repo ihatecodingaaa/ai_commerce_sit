@@ -6,7 +6,7 @@ import uuid
 
 from flask import Blueprint, jsonify, request
 
-from app.auth import current_user, require_login
+from app.auth import current_user, require_customer
 from app.logging_setup import log_event
 from app.models.db import db_cursor, execute, query_all, query_one
 
@@ -14,7 +14,7 @@ bp = Blueprint("api_cart", __name__, url_prefix="/api/cart")
 
 
 @bp.route("", methods=["POST"])
-@require_login
+@require_customer
 def add_to_cart():
     user = current_user()
     data = request.get_json(silent=True) or request.form
@@ -40,7 +40,7 @@ def add_to_cart():
 
 
 @bp.route("/<int:item_id>", methods=["PUT"])
-@require_login
+@require_customer
 def update_cart_item(item_id):
     user = current_user()
     data = request.get_json(silent=True) or request.form
@@ -60,7 +60,7 @@ def update_cart_item(item_id):
 
 
 @bp.route("/<int:item_id>", methods=["DELETE"])
-@require_login
+@require_customer
 def remove_cart_item(item_id):
     user = current_user()
     item = query_one("SELECT id FROM cart_items WHERE id = ? AND user_id = ?", (item_id, user["id"]))
@@ -72,7 +72,7 @@ def remove_cart_item(item_id):
 
 
 @bp.route("/checkout", methods=["POST"])
-@require_login
+@require_customer
 def checkout():
     user = current_user()
     request_id = uuid.uuid4().hex[:12]

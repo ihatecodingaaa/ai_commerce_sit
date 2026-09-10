@@ -67,6 +67,7 @@
   </form>
 </div>
 
+{% if user.role == 'customer' %}
 <div class="section-heading" style="margin-top:2rem;"><h2>Order history</h2></div>
 {% if orders %}
 <div class="data-table-wrap animate-in">
@@ -88,6 +89,7 @@
 </div>
 {% else %}
 <div class="empty-state animate-in">No orders yet &mdash; add something to your <a href="/cart">cart</a> and check out.</div>
+{% endif %}
 {% endif %}
 
 <script>

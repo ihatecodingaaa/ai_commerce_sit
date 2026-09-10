@@ -55,6 +55,9 @@ def cart():
     user = current_user()
     if not user:
         return redirect(url_for("auth.login"))
+    if user["role"] != "customer":
+        # Admin is a staff role, not a shopper -- it has no cart to view.
+        abort(403)
     rows = query_all(
         "SELECT c.id, c.quantity, c.product_id, p.name AS product_name, p.price_cents, p.image_path "
         "FROM cart_items c JOIN products p ON p.id = c.product_id "
@@ -66,15 +69,28 @@ def cart():
 
 @bp.route("/support")
 def support():
+    """The chat-only support page. Split from ticket submission
+    (/support/tickets) so a customer chatting with Shopilot and a customer
+    filling out a ticket form are never fighting for the same page layout
+    -- and so neither flow gets tangled up with the other's state.
+    """
+    user = current_user()
+    if not user:
+        return redirect(url_for("auth.login"))
+    return render_template("support.html", user=user)
+
+
+@bp.route("/support/tickets")
+def support_tickets():
     user = current_user()
     if not user:
         return redirect(url_for("auth.login"))
     tickets = query_all(
-        "SELECT ticket_ref, subject, status, created_at FROM tickets "
+        "SELECT ticket_ref, subject, body, status, admin_reply, created_at FROM tickets "
         "WHERE user_id = ? AND visibility = 'customer' ORDER BY created_at DESC",
         (user["id"],),
     )
-    return render_template("support.html", user=user, tickets=tickets)
+    return render_template("support_tickets.html", user=user, tickets=tickets)
 
 
 @bp.route("/account")

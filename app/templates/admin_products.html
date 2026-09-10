@@ -1,8 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Admin - Products - ShopLite{% endblock %}
 {% block content %}
+{% set active = 'products' %}
 <div class="section-heading">
   <h1>Manage products</h1>
+</div>
+{% include "_admin_subnav.html" %}
+<div class="section-heading">
+  <span></span>
   <button id="new-product-toggle" class="btn btn-primary btn-sm">+ New product</button>
 </div>
 

@@ -42,6 +42,25 @@ def require_login(fn):
     return wrapper
 
 
+def require_customer(fn):
+    """For JSON/API routes that only make sense for a shopping customer
+    (the cart/checkout flow): 401 if not logged in, 403 for an admin
+    account. Admin is a staff role, not a customer -- it should never be
+    able to place an order, enforced here server-side rather than just by
+    hiding the "Add to cart" button in the UI.
+    """
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        user = current_user()
+        if user is None:
+            return jsonify({"error": "authentication required"}), 401
+        if user["role"] != "customer":
+            return jsonify({"error": "only customer accounts can use the cart"}), 403
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
 def require_admin(fn):
     """For JSON/API routes: 401 if not logged in, 403 if logged in but not
     an admin. There is no client-supplied "am I admin" input anywhere --

@@ -6,6 +6,7 @@
   const form = document.getElementById('chat-form');
   const input = document.getElementById('chat-input');
   const log = document.getElementById('chat-log');
+  const suggestions = document.getElementById('chat-suggestions');
   if (!form || !input || !log) return;
   const sendBtn = form.querySelector('button');
 
@@ -27,30 +28,13 @@
     return div;
   }
 
-  // Conversation state lives server-side per logged-in customer (see
-  // app/chatbot/agent.py) -- reload it so returning to this page shows the
-  // same conversation instead of starting over.
-  (async function loadHistory() {
-    try {
-      const res = await fetch('/api/chat/history');
-      if (!res.ok) return;
-      const data = await res.json();
-      const messages = data.messages || [];
-      if (messages.length === 0) {
-        appendMessage("Hi! I'm Shopilot, ShopLite's support assistant. Ask me about your orders, account, or products.", 'bot');
-        return;
-      }
-      messages.forEach((m) => appendMessage(m.content, m.role === 'user' ? 'user' : 'bot'));
-    } catch (err) {
-      appendMessage("Hi! I'm Shopilot, ShopLite's support assistant. Ask me about your orders, account, or products.", 'bot');
-    }
-  })();
+  function hideSuggestions() {
+    if (suggestions) suggestions.hidden = true;
+  }
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const message = input.value.trim();
-    if (!message) return;
+  async function sendMessage(message) {
     appendMessage(message, 'user');
+    hideSuggestions();
     input.value = '';
     input.disabled = true;
     if (sendBtn) sendBtn.disabled = true;
@@ -73,5 +57,38 @@
       if (sendBtn) sendBtn.disabled = false;
       input.focus();
     }
+  }
+
+  // Conversation state lives server-side per logged-in customer (see
+  // app/chatbot/agent.py) -- reload it so returning to this page shows the
+  // same conversation instead of starting over.
+  (async function loadHistory() {
+    try {
+      const res = await fetch('/api/chat/history');
+      if (!res.ok) return;
+      const data = await res.json();
+      const messages = data.messages || [];
+      if (messages.length === 0) {
+        appendMessage("Hi! I'm Shopilot, ShopLite's support assistant. Ask me about your orders, account, or products.", 'bot');
+        return;
+      }
+      hideSuggestions();
+      messages.forEach((m) => appendMessage(m.content, m.role === 'user' ? 'user' : 'bot'));
+    } catch (err) {
+      appendMessage("Hi! I'm Shopilot, ShopLite's support assistant. Ask me about your orders, account, or products.", 'bot');
+    }
+  })();
+
+  if (suggestions) {
+    suggestions.querySelectorAll('.chip-btn').forEach((btn) => {
+      btn.addEventListener('click', () => sendMessage(btn.textContent));
+    });
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const message = input.value.trim();
+    if (!message) return;
+    sendMessage(message);
   });
 })();

@@ -16,7 +16,7 @@
     <p>{{ product.description }}</p>
     <div class="price" style="font-size:1.4rem">${{ "%.2f"|format(product.price_cents / 100) }}</div>
 
-    {% if user %}
+    {% if user and user.role == 'customer' %}
     <form id="buy-form" class="purchase-panel" data-product-id="{{ product.id }}">
       <div class="field-inline">
         <label style="margin:0">Qty</label>
@@ -24,6 +24,8 @@
       </div>
       <button type="submit" class="btn btn-primary">Add to cart</button>
     </form>
+    {% elif user and user.role == 'admin' %}
+    <p class="muted">Admin accounts manage the catalog but don't place orders. <a href="/admin/products">Edit this product</a>.</p>
     {% else %}
     <p><a href="/login">Log in</a> to add this to your cart or leave a review.</p>
     {% endif %}

@@ -26,14 +26,14 @@
       <button id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">&#9776;</button>
       <nav id="nav-links" class="nav-links">
         <a href="/products" class="{{ 'active' if request.path.startswith('/products') else '' }}">Products</a>
-        <a href="/about" class="{{ 'active' if request.path == '/about' else '' }}">About</a>
-        {% if user %}
+        {% if user and user.role != 'admin' %}
           <a href="/cart" class="{{ 'active' if request.path == '/cart' else '' }}">Cart</a>
-          <a href="/support" class="{{ 'active' if request.path == '/support' else '' }}">Support</a>
-          <a href="/account" class="{{ 'active' if request.path == '/account' else '' }}">Account</a>
-          {% if user.role == 'admin' %}
+        {% endif %}
+        {% if user and user.role == 'admin' %}
           <a href="/admin/products" class="{{ 'active' if request.path.startswith('/admin') else '' }}">Admin</a>
-          {% endif %}
+        {% endif %}
+        {% if user %}
+          <a href="/account" class="{{ 'active' if request.path == '/account' else '' }}">Account</a>
         {% endif %}
       </nav>
       <div class="auth-area">
@@ -57,8 +57,23 @@
       {% block content %}{% endblock %}
     </main>
 
-    <footer class="footer">
-      ShopLite &mdash; a demo storefront &middot; training/lab environment
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="brand"><span class="logo-mark">S</span> ShopLite</span>
+          <p class="muted">A demo storefront for a security-training lab &mdash; not a real store.</p>
+        </div>
+        <div class="footer-col">
+          <span class="footer-col-title">Company</span>
+          <a href="/about">About</a>
+        </div>
+        <div class="footer-col">
+          <span class="footer-col-title">Help</span>
+          <a href="/support">Chat with Shopilot</a>
+          <a href="/support/tickets">Support tickets</a>
+        </div>
+      </div>
+      <div class="footer-bottom muted">&copy; ShopLite &mdash; training/lab environment</div>
     </footer>
   </div>
 

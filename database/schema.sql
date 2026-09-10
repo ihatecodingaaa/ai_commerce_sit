@@ -103,8 +103,11 @@ CREATE TABLE tickets (
     body          TEXT NOT NULL,
     service       TEXT,
     environment   TEXT,
-    status        TEXT NOT NULL DEFAULT 'open',
+    status        TEXT NOT NULL DEFAULT 'open',       -- 'open' | 'in_progress' | 'resolved'
     visibility    TEXT NOT NULL DEFAULT 'customer',  -- 'customer' | 'internal'
+    -- Set by an admin via /admin/tickets (app/routes/api_admin_tickets.py).
+    -- A single reply field, not a thread -- enough for this lab's scope.
+    admin_reply   TEXT,
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

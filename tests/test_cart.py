@@ -72,3 +72,24 @@ def test_checkout_rejects_empty_cart(client, bob):
 def test_cart_page_requires_login_redirect(client):
     resp = client.get("/cart")
     assert resp.status_code == 302
+
+
+def test_admin_cannot_view_cart_page(client, admin):
+    resp = client.get("/cart")
+    assert resp.status_code == 403
+
+
+def test_admin_cannot_add_to_cart(client, admin):
+    resp = client.post("/api/cart", json={"product_id": 1, "quantity": 1})
+    assert resp.status_code == 403
+    assert query_one("SELECT id FROM cart_items WHERE user_id = ?", (admin["id"],)) is None
+
+
+def test_admin_cannot_checkout(client, admin):
+    resp = client.post("/api/cart/checkout")
+    assert resp.status_code == 403
+
+
+def test_admin_cannot_use_cart_item_endpoints(client, admin):
+    assert client.put("/api/cart/1", json={"quantity": 2}).status_code == 403
+    assert client.delete("/api/cart/1").status_code == 403

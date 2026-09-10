@@ -46,6 +46,18 @@
      regardless of page theme, the same way a native OS tooltip does. */
   --overlay-strong: #16221f;
 
+  /* Also intentionally constant: a solid, always-readable background for
+     error/warning banners (e.g. "Incorrect password"). Pairing red text
+     with a *tinted* red background (as a plain --danger-bg + --danger
+     pairing would in dark mode) reads as red-on-red; white text on a
+     solid, saturated red fixes that in both themes without needing a
+     theme-specific override. */
+  --alert-danger-bg: #b91c1c;
+  --alert-danger-text: #ffffff;
+
+  --selection-bg: var(--brand-100);
+  --selection-text: var(--brand-900);
+
   color-scheme: light;
 }
 
@@ -55,10 +67,13 @@
    token below is a friend of the light one defined above it; component
    CSS never checks the theme directly, it just uses the tokens.
    ========================================================================== */
+/* Surfaces/text are neutral gray in dark mode; brand-* stays a teal accent
+   (buttons, the logo mark, links) so there's still a spot of color -- only
+   the backgrounds/cards/modals went gray, not everything. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --brand-900: #27272a; --brand-700: #d4d4d8; --brand-600: #71717a; --brand-500: #a1a1aa; --brand-100: rgba(161, 161, 170, 0.16); --accent-500: #fbbf24; --accent-100: rgba(251, 191, 36, 0.18); --bg: #0e0e10; --surface: #18181b; --surface-2: #1f1f23; --border: #2b2b30; --border-strong: #3f3f46; --text: #e4e4e7; --text-muted: #a1a1aa; --text-faint: #71717a; --success: #34d399; --success-bg: rgba(52, 211, 153, 0.14); --danger: #f87171; --danger-bg: rgba(248, 113, 113, 0.14); --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35); --shadow-md: 0 6px 20px -4px rgba(0, 0, 0, 0.5); --shadow-lg: 0 20px 45px -12px rgba(0, 0, 0, 0.6); --nav-bg: rgba(14, 14, 16, 0.85); color-scheme: dark; }
+  :root:not([data-theme="light"]) { --brand-900: #0d4a44; --brand-700: #2dd4bf; --brand-600: #22c3ae; --brand-500: #17dcc6; --brand-100: rgba(45, 212, 191, 0.18); --accent-500: #fbbf24; --accent-100: rgba(251, 191, 36, 0.18); --bg: #0e0e10; --surface: #18181b; --surface-2: #1f1f23; --border: #2b2b30; --border-strong: #3f3f46; --text: #e4e4e7; --text-muted: #a1a1aa; --text-faint: #71717a; --success: #34d399; --success-bg: rgba(52, 211, 153, 0.14); --danger: #f87171; --danger-bg: rgba(248, 113, 113, 0.14); --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35); --shadow-md: 0 6px 20px -4px rgba(0, 0, 0, 0.5); --shadow-lg: 0 20px 45px -12px rgba(0, 0, 0, 0.6); --nav-bg: rgba(14, 14, 16, 0.85); --selection-bg: #17dcc6; --selection-text: #08211d; color-scheme: dark; }
 }
-:root[data-theme="dark"] { --brand-900: #27272a; --brand-700: #d4d4d8; --brand-600: #71717a; --brand-500: #a1a1aa; --brand-100: rgba(161, 161, 170, 0.16); --accent-500: #fbbf24; --accent-100: rgba(251, 191, 36, 0.18); --bg: #0e0e10; --surface: #18181b; --surface-2: #1f1f23; --border: #2b2b30; --border-strong: #3f3f46; --text: #e4e4e7; --text-muted: #a1a1aa; --text-faint: #71717a; --success: #34d399; --success-bg: rgba(52, 211, 153, 0.14); --danger: #f87171; --danger-bg: rgba(248, 113, 113, 0.14); --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35); --shadow-md: 0 6px 20px -4px rgba(0, 0, 0, 0.5); --shadow-lg: 0 20px 45px -12px rgba(0, 0, 0, 0.6); --nav-bg: rgba(14, 14, 16, 0.85); color-scheme: dark; }
+:root[data-theme="dark"] { --brand-900: #0d4a44; --brand-700: #2dd4bf; --brand-600: #22c3ae; --brand-500: #17dcc6; --brand-100: rgba(45, 212, 191, 0.18); --accent-500: #fbbf24; --accent-100: rgba(251, 191, 36, 0.18); --bg: #0e0e10; --surface: #18181b; --surface-2: #1f1f23; --border: #2b2b30; --border-strong: #3f3f46; --text: #e4e4e7; --text-muted: #a1a1aa; --text-faint: #71717a; --success: #34d399; --success-bg: rgba(52, 211, 153, 0.14); --danger: #f87171; --danger-bg: rgba(248, 113, 113, 0.14); --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35); --shadow-md: 0 6px 20px -4px rgba(0, 0, 0, 0.5); --shadow-lg: 0 20px 45px -12px rgba(0, 0, 0, 0.6); --nav-bg: rgba(14, 14, 16, 0.85); --selection-bg: #17dcc6; --selection-text: #08211d; color-scheme: dark; }
 
 /* ==========================================================================
    Reset & base
@@ -79,7 +94,7 @@ h2 { font-size: 1.4rem; font-weight: 700; }
 h3 { font-size: 1.1rem; font-weight: 700; }
 p { margin: 0 0 1em; color: var(--text); }
 a { color: var(--brand-700); }
-::selection { background: var(--brand-100); color: var(--brand-900); }
+::selection { background: var(--selection-bg); color: var(--selection-text); }
 
 /* ==========================================================================
    Motion primitives
@@ -410,6 +425,21 @@ form { margin: 0; }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1rem; }
 .section-heading .muted { color: var(--text-faint); font-size: 0.85rem; }
 
+.subnav {
+  display: inline-flex; gap: 0.25rem; padding: 0.3rem;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 999px; margin-bottom: 1.5rem;
+}
+.subnav a {
+  padding: 0.45rem 1rem; border-radius: 999px; font-size: 0.88rem; font-weight: 700;
+  text-decoration: none; color: var(--text-muted); transition: background var(--fast), color var(--fast);
+}
+.subnav a:hover { color: var(--text); }
+.subnav a.active {
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+  color: white;
+}
+
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -564,9 +594,17 @@ form { margin: 0; }
 
 .badge { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px; text-transform: capitalize; }
 .badge-open, .badge-placed { background: var(--accent-100); color: #92400e; }
-.badge-delivered, .badge-closed { background: var(--success-bg); color: var(--success); }
-.badge-shipped { background: var(--brand-100); color: var(--brand-700); }
+.badge-delivered, .badge-closed, .badge-resolved { background: var(--success-bg); color: var(--success); }
+.badge-shipped, .badge-in_progress { background: var(--brand-100); color: var(--brand-700); }
 .badge-refund_requested { background: var(--danger-bg); color: var(--danger); }
+
+.ticket-list { list-style: none; padding: 0; display: grid; gap: 0.8rem; margin: 0; }
+.ticket-card { padding: 1.1rem 1.25rem; }
+.ticket-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.ticket-reply {
+  margin-top: 0.75rem; padding: 0.75rem 0.9rem; border-radius: var(--radius-sm);
+  background: var(--brand-100); border: 1px solid var(--border);
+}
 
 /* ==========================================================================
    Account / about
@@ -652,6 +690,17 @@ form { margin: 0; }
 #chat-log .bot.typing span:nth-child(2) { animation-delay: 0.15s; }
 #chat-log .bot.typing span:nth-child(3) { animation-delay: 0.3s; }
 
+.chat-suggestions {
+  display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.6rem 0.85rem;
+  border-top: 1px solid var(--border); background: var(--surface);
+}
+.chip-btn {
+  border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text-muted);
+  border-radius: 999px; padding: 0.35rem 0.8rem; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: background var(--fast), color var(--fast), border-color var(--fast);
+}
+.chip-btn:hover { background: var(--brand-100); color: var(--brand-700); border-color: var(--brand-500); }
+
 #chat-form { display: flex; gap: 0.5rem; padding: 0.6rem; border-top: 1px solid var(--border); background: var(--surface); }
 #chat-input {
   flex: 1; border: 1.5px solid var(--border-strong); border-radius: 999px; padding: 0.5rem 0.9rem; font: inherit;
@@ -671,15 +720,37 @@ form { margin: 0; }
    Misc
    ========================================================================== */
 .error {
-  color: var(--danger); background: var(--danger-bg); border: 1px solid #fecaca;
+  color: var(--alert-danger-text); background: var(--alert-danger-bg); border: none;
   padding: 0.6rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.88rem; margin-bottom: 0.5rem;
+  font-weight: 600;
   animation: popIn var(--fast) var(--ease) both;
 }
 .muted { color: var(--text-muted); }
 .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-faint); }
-.footer {
-  border-top: 1px solid var(--border); padding: 1.5rem 1.25rem; text-align: center;
-  color: var(--text-faint); font-size: 0.8rem;
+.site-footer {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  margin-top: 3rem;
+}
+.footer-inner {
+  max-width: 1080px; margin: 0 auto; padding: 2.5rem 1.25rem 1.75rem;
+  display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 2rem;
+}
+.footer-brand .brand { color: var(--text); pointer-events: none; }
+.footer-brand p { margin: 0.6rem 0 0; font-size: 0.85rem; max-width: 320px; }
+.footer-col { display: flex; flex-direction: column; gap: 0.55rem; }
+.footer-col-title {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-faint); margin-bottom: 0.15rem;
+}
+.footer-col a { color: var(--text-muted); text-decoration: none; font-size: 0.88rem; transition: color var(--fast); }
+.footer-col a:hover { color: var(--brand-700); }
+.footer-bottom {
+  border-top: 1px solid var(--border); padding: 1rem 1.25rem; text-align: center; font-size: 0.78rem;
+}
+@media (max-width: 640px) {
+  .footer-inner { grid-template-columns: 1fr 1fr; }
+  .footer-brand { grid-column: 1 / -1; }
 }
 .spinner {
   width: 14px; height: 14px; border-radius: 50%;
