@@ -20,6 +20,13 @@ CREATE TABLE users (
     password_hash TEXT NOT NULL,
     full_name     TEXT NOT NULL,
     role          TEXT NOT NULL DEFAULT 'customer',   -- 'customer' | 'admin'
+    -- Preset key only (e.g. 'fox') -- see app/avatars.py::PRESET_AVATARS.
+    -- Deliberately NOT a file path: profile pictures are chosen from a
+    -- fixed, server-defined library, not uploaded, so the account-editing
+    -- feature never becomes a second file-upload surface. The only
+    -- intentional file-upload vulnerability in this lab stays the one
+    -- reachable via the leaked support-image-service token.
+    avatar        TEXT NOT NULL DEFAULT 'fox',
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

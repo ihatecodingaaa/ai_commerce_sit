@@ -1,22 +1,118 @@
 {% extends "base.html" %}
 {% block title %}Account - ShopLite{% endblock %}
 {% block content %}
-<h1>Your account</h1>
+<div class="section-heading">
+  <h1>Your account</h1>
+  <button id="edit-account-toggle" class="btn btn-secondary btn-sm">Edit profile</button>
+</div>
 
 <div class="card profile-card animate-in">
-  <span class="avatar profile-avatar">{{ user.full_name[0]|upper }}</span>
+  <span class="avatar profile-avatar {{ avatar_class(user.avatar) }}">{{ avatar_emoji(user.avatar) }}</span>
   <div>
     <h3 style="margin-bottom:0.15rem">{{ user.full_name }}</h3>
     <span class="muted">@{{ user.username }}</span>
   </div>
 </div>
 
-<div class="card animate-in" style="padding:1.5rem;">
+<div class="card animate-in" style="padding:1.5rem; margin-bottom:1.25rem;">
   <dl class="info-grid">
     <div class="info-item"><dt>Email</dt><dd>{{ user.email }}</dd></div>
     <div class="info-item"><dt>Username</dt><dd>{{ user.username }}</dd></div>
     <div class="info-item"><dt>Member since</dt><dd>{{ user.created_at }}</dd></div>
-    <div class="info-item"><dt>Account type</dt><dd>Customer</dd></div>
+    <div class="info-item"><dt>Account type</dt><dd>{{ 'Admin' if user.role == 'admin' else 'Customer' }}</dd></div>
   </dl>
 </div>
+
+<div id="edit-account-card" class="card animate-in" style="padding:1.5rem;" hidden>
+  <h3 style="margin-bottom:0.9rem">Edit profile</h3>
+  <form id="edit-account-form">
+    <label>Profile photo</label>
+    <div class="avatar-picker" id="avatar-picker">
+      {% for a in PRESET_AVATARS %}
+      <button type="button" class="avatar avatar-swatch avatar-preset-{{ loop.index0 }} {{ 'selected' if a.key == user.avatar else '' }}"
+              data-avatar-key="{{ a.key }}" title="{{ a.label }}" aria-label="{{ a.label }}">{{ a.emoji }}</button>
+      {% endfor %}
+    </div>
+
+    <div class="field-row">
+      <div style="flex:1; min-width:200px;">
+        <label>Full name</label>
+        <input type="text" id="edit-full-name" value="{{ user.full_name }}" required>
+      </div>
+      <div style="flex:1; min-width:200px;">
+        <label>Email</label>
+        <input type="email" id="edit-email" value="{{ user.email }}" required>
+      </div>
+    </div>
+
+    <h3 style="margin-top:1.5rem; margin-bottom:0.25rem; font-size:0.95rem;">Change password</h3>
+    <p class="muted" style="margin-bottom:0.5rem; font-size:0.82rem;">Leave blank to keep your current password.</p>
+    <div class="field-row">
+      <div style="flex:1; min-width:200px;">
+        <label>Current password</label>
+        <input type="password" id="edit-current-password" autocomplete="current-password">
+      </div>
+      <div style="flex:1; min-width:200px;">
+        <label>New password</label>
+        <input type="password" id="edit-new-password" autocomplete="new-password" minlength="8">
+      </div>
+    </div>
+
+    <div class="field-row" style="margin-top:1.1rem;">
+      <button type="submit" class="btn btn-primary">Save changes</button>
+      <button type="button" class="btn btn-secondary" id="cancel-edit-account">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<script>
+const editToggle = document.getElementById('edit-account-toggle');
+const editCard = document.getElementById('edit-account-card');
+editToggle.addEventListener('click', () => { editCard.hidden = !editCard.hidden; });
+document.getElementById('cancel-edit-account').addEventListener('click', () => { editCard.hidden = true; });
+
+let selectedAvatar = "{{ user.avatar }}";
+const picker = document.getElementById('avatar-picker');
+picker.addEventListener('click', (e) => {
+  const btn = e.target.closest('.avatar-swatch');
+  if (!btn) return;
+  selectedAvatar = btn.dataset.avatarKey;
+  picker.querySelectorAll('.avatar-swatch').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+});
+
+document.getElementById('edit-account-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    full_name: document.getElementById('edit-full-name').value.trim(),
+    email: document.getElementById('edit-email').value.trim(),
+    avatar: selectedAvatar,
+  };
+  const newPassword = document.getElementById('edit-new-password').value;
+  if (newPassword) {
+    payload.new_password = newPassword;
+    payload.current_password = document.getElementById('edit-current-password').value;
+  }
+  const btn = e.target.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/account', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast('Profile updated.', 'success');
+      setTimeout(() => location.reload(), 600);
+    } else {
+      showToast(data.error || 'Error updating profile.', 'error');
+      btn.disabled = false;
+    }
+  } catch (err) {
+    showToast('Network error updating profile.', 'error');
+    btn.disabled = false;
+  }
+});
+</script>
 {% endblock %}

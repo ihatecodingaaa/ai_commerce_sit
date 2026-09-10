@@ -28,4 +28,23 @@
     toggle.addEventListener('click', () => links.classList.toggle('open'));
     links.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => links.classList.remove('open')));
   }
+
+  // Dark mode: an explicit choice (stored in localStorage) always wins;
+  // otherwise the page already follows prefers-color-scheme via CSS alone.
+  function effectiveTheme() {
+    const explicit = localStorage.getItem('theme');
+    if (explicit === 'dark' || explicit === 'light') return explicit;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  const themeBtn = document.getElementById('theme-toggle');
+  if (themeBtn) {
+    const syncIcon = () => { themeBtn.textContent = effectiveTheme() === 'dark' ? '☀️' : '🌙'; };
+    syncIcon();
+    themeBtn.addEventListener('click', () => {
+      const next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('theme', next); } catch (e) {}
+      syncIcon();
+    });
+  }
 })();

@@ -33,14 +33,14 @@ def seed(conn: sqlite3.Connection):
 
     # ---- Customers -----------------------------------------------------
     customers = [
-        ("alice.customer", "alice.customer@example-lab.test", "Customer123!", "Alice Customer"),
-        ("bob.customer", "bob.customer@example-lab.test", "Customer123!", "Bob Customer"),
+        ("alice.customer", "alice.customer@example-lab.test", "Customer123!", "Alice Customer", "panda"),
+        ("bob.customer", "bob.customer@example-lab.test", "Customer123!", "Bob Customer", "owl"),
     ]
     customer_ids = {}
-    for username, email, pw, full_name in customers:
+    for username, email, pw, full_name, avatar in customers:
         cur.execute(
-            "INSERT INTO users (username, email, password_hash, full_name, role) VALUES (?, ?, ?, ?, 'customer')",
-            (username, email, hash_password(pw), full_name),
+            "INSERT INTO users (username, email, password_hash, full_name, role, avatar) VALUES (?, ?, ?, ?, 'customer', ?)",
+            (username, email, hash_password(pw), full_name, avatar),
         )
         customer_ids[username] = cur.lastrowid
 
@@ -51,8 +51,8 @@ def seed(conn: sqlite3.Connection):
     # role='customer' and has no field to request otherwise -- admin
     # accounts only ever come from seed data, never from a signup form.
     cur.execute(
-        "INSERT INTO users (username, email, password_hash, full_name, role) VALUES (?, ?, ?, ?, 'admin')",
-        ("admin", "admin@shoplite-lab.test", hash_password("AdminLab123!"), "Site Administrator"),
+        "INSERT INTO users (username, email, password_hash, full_name, role, avatar) VALUES (?, ?, ?, ?, 'admin', ?)",
+        ("admin", "admin@shoplite-lab.test", hash_password("AdminLab123!"), "Site Administrator", "robot"),
     )
 
     # ---- Employees (directory only, not login accounts) -----------------

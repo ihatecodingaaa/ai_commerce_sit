@@ -53,7 +53,7 @@
   {% for r in reviews %}
   <li class="review-card" data-review-id="{{ r.id }}" data-rating="{{ r.rating }}">
     <div class="review-head">
-      <span class="avatar">{{ r.username[0]|upper }}</span>
+      <span class="avatar {{ avatar_class(r.avatar) }}">{{ avatar_emoji(r.avatar) }}</span>
       <strong>{{ r.username }}</strong>
       <span class="stars review-stars" style="font-size:0.75rem">{{ ('&#9733;' * r.rating) | safe }}{{ ('&#9734;' * (5 - r.rating)) | safe }}</span>
       {% if user and r.user_id == user.id %}

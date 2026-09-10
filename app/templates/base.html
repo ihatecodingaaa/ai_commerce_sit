@@ -4,6 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}ShopLite{% endblock %}</title>
+  <script>
+    // Runs before CSS paints so there's no flash of the wrong theme.
+    // Only sets an attribute when the visitor has explicitly chosen a
+    // theme before -- otherwise CSS falls through to prefers-color-scheme.
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -26,10 +37,11 @@
         {% endif %}
       </nav>
       <div class="auth-area">
+        <button id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">&#127769;</button>
         {% if user %}
           <span class="hello-chip">
-            <span class="avatar">{{ user.full_name[0]|upper }}</span> {{ user.full_name.split(' ')[0] }}
-            {% if user.role == 'admin' %}<span class="category-badge">Admin</span>{% endif %}
+            <span class="avatar {{ avatar_class(user.avatar) }}">{{ avatar_emoji(user.avatar) }}</span> {{ user.full_name.split(' ')[0] }}
+            <span class="category-badge">{{ 'Admin' if user.role == 'admin' else 'Customer' }}</span>
           </span>
           <form action="/logout" method="post" style="display:inline">
             <button type="submit" class="link-btn">Log out</button>

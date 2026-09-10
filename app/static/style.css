@@ -37,8 +37,28 @@
   --fast: 150ms var(--ease);
   --med: 260ms var(--ease);
 
+  /* Translucent nav backdrop -- needs a theme-specific value (not just an
+     alpha over --surface) since it's a blurred overlay, not a flat fill. */
+  --nav-bg: rgba(255, 255, 255, 0.85);
+
+  /* Intentionally constant across themes (not redefined below): a few
+     elements -- toasts, tooltips -- read as "a dark chip with light text"
+     regardless of page theme, the same way a native OS tooltip does. */
+  --overlay-strong: #16221f;
+
   color-scheme: light;
 }
+
+/* ==========================================================================
+   Dark mode -- explicit choice (data-theme, set by app.js/localStorage)
+   always wins; otherwise this follows the OS/browser preference. Every
+   token below is a friend of the light one defined above it; component
+   CSS never checks the theme directly, it just uses the tokens.
+   ========================================================================== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --brand-900: #0d4a44; --brand-700: #2dd4bf; --brand-600: #22c3ae; --brand-500: #17dcc6; --brand-100: rgba(45, 212, 191, 0.16); --accent-500: #fbbf24; --accent-100: rgba(251, 191, 36, 0.18); --bg: #0b1210; --surface: #131c1a; --surface-2: #182320; --border: #24312e; --border-strong: #34443f; --text: #e7efec; --text-muted: #a7b8b3; --text-faint: #77887f; --success: #34d399; --success-bg: rgba(52, 211, 153, 0.14); --danger: #f87171; --danger-bg: rgba(248, 113, 113, 0.14); --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35); --shadow-md: 0 6px 20px -4px rgba(0, 0, 0, 0.5); --shadow-lg: 0 20px 45px -12px rgba(0, 0, 0, 0.6); --nav-bg: rgba(11, 18, 16, 0.85); color-scheme: dark; }
+}
+:root[data-theme="dark"] { --brand-900: #0d4a44; --brand-700: #2dd4bf; --brand-600: #22c3ae; --brand-500: #17dcc6; --brand-100: rgba(45, 212, 191, 0.16); --accent-500: #fbbf24; --accent-100: rgba(251, 191, 36, 0.18); --bg: #0b1210; --surface: #131c1a; --surface-2: #182320; --border: #24312e; --border-strong: #34443f; --text: #e7efec; --text-muted: #a7b8b3; --text-faint: #77887f; --success: #34d399; --success-bg: rgba(52, 211, 153, 0.14); --danger: #f87171; --danger-bg: rgba(248, 113, 113, 0.14); --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35); --shadow-md: 0 6px 20px -4px rgba(0, 0, 0, 0.5); --shadow-lg: 0 20px 45px -12px rgba(0, 0, 0, 0.6); --nav-bg: rgba(11, 18, 16, 0.85); color-scheme: dark; }
 
 /* ==========================================================================
    Reset & base
@@ -129,7 +149,7 @@ a { color: var(--brand-700); }
   align-items: center;
   gap: 1.5rem;
   padding: 0.7rem 1.5rem;
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--nav-bg);
   backdrop-filter: blur(10px) saturate(160%);
   -webkit-backdrop-filter: blur(10px) saturate(160%);
   border-bottom: 1px solid var(--border);
@@ -212,7 +232,32 @@ a { color: var(--brand-700); }
   font-size: 0.75rem;
   font-weight: 800;
   flex-shrink: 0;
+  line-height: 1;
 }
+
+/* Preset profile-photo gradients -- see app/avatars.py::PRESET_AVATARS.
+   Index-matched to that list; pure CSS, no image files involved. */
+.avatar-preset-0 { background: linear-gradient(135deg, #f59e0b, #b45309); }
+.avatar-preset-1 { background: linear-gradient(135deg, #6366f1, #312e81); }
+.avatar-preset-2 { background: linear-gradient(135deg, #14958a, #0b3b36); }
+.avatar-preset-3 { background: linear-gradient(135deg, #ec4899, #831843); }
+.avatar-preset-4 { background: linear-gradient(135deg, #a855f7, #581c87); }
+.avatar-preset-5 { background: linear-gradient(135deg, #06b6d4, #164e63); }
+.avatar-preset-6 { background: linear-gradient(135deg, #64748b, #1e293b); }
+.avatar-preset-7 { background: linear-gradient(135deg, #84cc16, #365314); }
+.avatar-preset-8 { background: linear-gradient(135deg, #ef4444, #7f1d1d); }
+.avatar-preset-9 { background: linear-gradient(135deg, #eab308, #713f12); }
+
+.avatar-picker { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.4rem 0 1rem; }
+.avatar-swatch {
+  width: 48px; height: 48px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; cursor: pointer; border: 2px solid transparent;
+  transition: transform var(--fast), border-color var(--fast);
+  padding: 0;
+}
+.avatar-swatch:hover { transform: translateY(-2px); }
+.avatar-swatch.selected { border-color: var(--text); box-shadow: 0 0 0 3px var(--brand-100); }
 
 @media (max-width: 760px) {
   .nav-toggle { display: inline-flex; }
@@ -540,7 +585,7 @@ form { margin: 0; }
   display: flex; flex-direction: column; gap: 0.5rem; max-width: 320px;
 }
 .toast {
-  background: var(--text); color: white;
+  background: var(--overlay-strong); color: white;
   padding: 0.7rem 1rem; border-radius: var(--radius-sm);
   font-size: 0.88rem; font-weight: 600; box-shadow: var(--shadow-lg);
   animation: popIn var(--fast) var(--ease) both;
@@ -612,7 +657,7 @@ form { margin: 0; }
   white-space: pre-wrap; word-break: break-word;
 }
 #chat-log .user { background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); color: white; margin-left: auto; border-bottom-right-radius: 4px; }
-#chat-log .bot { background: white; border: 1px solid var(--border); margin-right: auto; border-bottom-left-radius: 4px; }
+#chat-log .bot { background: var(--surface); border: 1px solid var(--border); margin-right: auto; border-bottom-left-radius: 4px; }
 #chat-log .bot.typing { display: flex; gap: 4px; align-items: center; padding: 0.7rem 0.9rem; }
 #chat-log .bot.typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); animation: bounceDot 1.2s infinite ease-in-out; }
 #chat-log .bot.typing span:nth-child(2) { animation-delay: 0.15s; }
