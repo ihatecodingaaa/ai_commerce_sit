@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Your Orders - ShopLite{% endblock %}
+{% block content %}
+<div class="section-heading">
+  <h1>Your orders</h1>
+</div>
+
+{% if orders %}
+<div class="data-table-wrap animate-in">
+  <table class="data-table">
+    <thead><tr><th>Order #</th><th>Product</th><th>Qty</th><th>Total</th><th>Status</th><th>Placed</th></tr></thead>
+    <tbody>
+    {% for o in orders %}
+      <tr>
+        <td>#{{ o.id }}</td>
+        <td>{{ o.product_name }}</td>
+        <td>{{ o.quantity }}</td>
+        <td>${{ "%.2f"|format(o.total_cents / 100) }}</td>
+        <td><span class="badge badge-{{ o.status }}">{{ o.status.replace('_', ' ') }}</span></td>
+        <td class="muted">{{ o.created_at }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state animate-in">No orders yet &mdash; <a href="/products">browse products</a> to get started.</div>
+{% endif %}
+{% endblock %}

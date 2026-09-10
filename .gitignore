@@ -1,0 +1,45 @@
+# Environment / secrets
+.env
+*.env.local
+
+# Database
+database/*.db
+database/*.db-journal
+database/*.sqlite3
+
+# Logs
+logs/*.log
+logs/*.jsonl
+
+# Uploaded files (vulnerable lab upload directory)
+# Note: the directory itself must NOT be excluded (uploads/* would also
+# match uploads/images/ and git won't descend into an excluded directory
+# to re-include a file inside it), so exclude contents one level at a time.
+uploads/*
+!uploads/images/
+uploads/images/*
+!uploads/images/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# Node (if any tooling is added later)
+node_modules/
+
+# Private keys / misc secrets
+*.pem
+*.key
+id_rsa*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

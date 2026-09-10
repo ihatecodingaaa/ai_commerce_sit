@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Register - ShopLite{% endblock %}
+{% block content %}
+<div class="card auth-card">
+  <div class="accent-bar"></div>
+  <h1>Create an account</h1>
+  <p class="muted" style="margin-bottom:1.25rem">Join ShopLite to buy, review, and get support.</p>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <form method="post" action="/register">
+    <label>Full name</label>
+    <input type="text" name="full_name" required autofocus>
+    <label>Username</label>
+    <input type="text" name="username" required>
+    <label>Email</label>
+    <input type="email" name="email" required>
+    <label>Password</label>
+    <input type="password" name="password" required>
+    <button type="submit" class="btn btn-primary btn-block" style="margin-top:1.4rem">Create account</button>
+  </form>
+  <p class="muted" style="margin-top:1.25rem; text-align:center">Already have an account? <a href="/login">Log in</a></p>
+</div>
+{% endblock %}

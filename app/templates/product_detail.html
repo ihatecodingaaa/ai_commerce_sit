@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} - ShopLite{% endblock %}
+{% block content %}
+<a href="/products" class="back-link">&larr; Back to products</a>
+
+<div class="detail-grid animate-in">
+  <div class="detail-thumb thumb-{{ product.id % 6 }}">{{ product.name[0]|upper }}</div>
+  <div>
+    <span class="category-badge">{{ product.category }}</span>
+    <h1>{{ product.name }}</h1>
+    <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9734; <span class="muted" style="font-size:0.85rem">({{ reviews|length }} review{{ '' if reviews|length == 1 else 's' }})</span></div>
+    <p>{{ product.description }}</p>
+    <div class="price" style="font-size:1.4rem">${{ "%.2f"|format(product.price_cents / 100) }}</div>
+
+    {% if user %}
+    <form id="buy-form" class="purchase-panel" data-product-id="{{ product.id }}">
+      <div class="field-inline">
+        <label style="margin:0">Qty</label>
+        <input type="number" id="buy-qty" value="1" min="1">
+      </div>
+      <button type="submit" class="btn btn-primary">Buy now</button>
+    </form>
+    {% else %}
+    <p><a href="/login">Log in</a> to purchase or leave a review.</p>
+    {% endif %}
+  </div>
+</div>
+
+<h2>Reviews</h2>
+{% if user %}
+<div class="card" style="padding:1.1rem 1.25rem; margin-bottom:1.25rem;">
+  <form id="review-form" data-product-id="{{ product.id }}">
+    <label>Rating</label>
+    <select id="review-rating" style="max-width:8rem">
+      <option value="5">&#9733;&#9733;&#9733;&#9733;&#9733; 5</option>
+      <option value="4">&#9733;&#9733;&#9733;&#9733; 4</option>
+      <option value="3">&#9733;&#9733;&#9733; 3</option>
+      <option value="2">&#9733;&#9733; 2</option>
+      <option value="1">&#9733; 1</option>
+    </select>
+    <label>Your review</label>
+    <textarea id="review-body" rows="3" placeholder="Share your thoughts about this product..."></textarea>
+    <button type="submit" class="btn btn-primary" style="margin-top:0.9rem">Submit review</button>
+  </form>
+</div>
+{% endif %}
+
+<ul class="review-list">
+  {% for r in reviews %}
+  <li class="review-card">
+    <div class="review-head">
+      <span class="avatar">{{ r.username[0]|upper }}</span>
+      <strong>{{ r.username }}</strong>
+      <span class="stars" style="font-size:0.75rem">{{ ('&#9733;' * r.rating) | safe }}{{ ('&#9734;' * (5 - r.rating)) | safe }}</span>
+    </div>
+    <p>{{ r.body }}</p>
+  </li>
+  {% else %}
+  <li class="empty-state">No reviews yet &mdash; be the first to share your thoughts.</li>
+  {% endfor %}
+</ul>
+
+<script>
+document.getElementById('review-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button');
+  const productId = e.target.dataset.productId;
+  const rating = document.getElementById('review-rating').value;
+  const body = document.getElementById('review-body').value;
+  if (!body.trim()) { showToast('Write something before submitting.', 'error'); return; }
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/products/${productId}/reviews`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({rating, body})
+    });
+    if (res.ok) {
+      showToast('Review submitted! Refreshing...', 'success');
+      setTimeout(() => location.reload(), 700);
+    } else {
+      showToast('Error submitting review.', 'error');
+      btn.disabled = false;
+    }
+  } catch (err) {
+    showToast('Network error submitting review.', 'error');
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('buy-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button');
+  const productId = e.target.dataset.productId;
+  const quantity = document.getElementById('buy-qty').value;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({product_id: productId, quantity})
+    });
+    if (res.ok) {
+      showToast('Order placed! View it on your Orders page.', 'success');
+    } else {
+      showToast('Error placing order.', 'error');
+    }
+  } catch (err) {
+    showToast('Network error placing order.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Buy now';
+  }
+});
+</script>
+{% endblock %}

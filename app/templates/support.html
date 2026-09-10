@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Support - ShopLite{% endblock %}
+{% block content %}
+<div class="section-heading">
+  <h1>Support</h1>
+</div>
+<p class="muted">Need a quick answer? Use the support chat in the bottom-right corner &mdash; it can look up your orders and tickets directly. Or open a ticket below for anything that needs a human.</p>
+
+<div class="card animate-in" style="padding:1.1rem 1.25rem; margin: 1rem 0 1.75rem;">
+  <h3 style="margin-bottom:0.75rem">Open a ticket</h3>
+  <form id="ticket-form">
+    <label>Subject</label>
+    <input id="ticket-subject" type="text" placeholder="Short summary of your issue">
+    <label>Details</label>
+    <textarea id="ticket-body" rows="3" placeholder="Describe your issue..."></textarea>
+    <button type="submit" class="btn btn-primary" style="margin-top:0.9rem">Submit ticket</button>
+  </form>
+</div>
+
+<div class="section-heading"><h2>Your tickets</h2></div>
+{% if tickets %}
+<div class="data-table-wrap">
+  <table class="data-table">
+    <thead><tr><th>Ref</th><th>Subject</th><th>Status</th><th>Opened</th></tr></thead>
+    <tbody>
+    {% for t in tickets %}
+      <tr>
+        <td>{{ t.ticket_ref }}</td>
+        <td>{{ t.subject }}</td>
+        <td><span class="badge badge-{{ t.status }}">{{ t.status }}</span></td>
+        <td class="muted">{{ t.created_at }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">No tickets yet.</div>
+{% endif %}
+
+<script>
+document.getElementById('ticket-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button');
+  const subject = document.getElementById('ticket-subject').value;
+  const body = document.getElementById('ticket-body').value;
+  if (!subject.trim() || !body.trim()) { showToast('Fill in both fields first.', 'error'); return; }
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/tickets', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({subject, body})
+    });
+    if (res.ok) {
+      showToast('Ticket submitted! Refreshing...', 'success');
+      setTimeout(() => location.reload(), 700);
+    } else {
+      showToast('Error submitting ticket.', 'error');
+      btn.disabled = false;
+    }
+  } catch (err) {
+    showToast('Network error submitting ticket.', 'error');
+    btn.disabled = false;
+  }
+});
+</script>
+{% endblock %}

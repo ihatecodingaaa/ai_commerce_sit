@@ -1,0 +1,53 @@
+# shop-lab architecture (see docs/architecture.md for the full diagram):
+#
+#   [ student browser ] --> [ app container: Flask, tools, RAG, vulnerable
+#                              upload/RCE, appuser->root privesc chain ]
+#                                  |
+#                                  v  OLLAMA_URL (HTTP only)
+#                           [ Ollama: host-native (recommended on a 4 GiB
+#                             EC2 box) OR the optional `ollama` service below ]
+#
+# The app container is the ENTIRE intentionally-vulnerable host for Stages
+# 8-12. It has no bind mount into this repo, no docker.sock, and no
+# elevated capabilities, so root inside it stays inside it.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    image: shop-lab-app:latest
+    # network_mode: host (not a bridge + port mapping) so the container can
+    # reach a host-native Ollama bound to 127.0.0.1:11434 -- the safer
+    # default for Ollama itself (not exposed on any external interface).
+    # This shares the host's NETWORK namespace only; it grants no
+    # filesystem, process, or user-namespace access to the host, so the
+    # appuser->root privilege-escalation chain (Stages 8-12) still stays
+    # entirely inside the container. FLASK_PORT (default 5000, see .env)
+    # is what the app binds directly on the host.
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      OLLAMA_URL: ${OLLAMA_URL:-http://127.0.0.1:11434}
+    restart: unless-stopped
+    # No volumes on purpose: database/logs/uploads live inside the
+    # container so `docker compose down && docker compose up --build`
+    # (or scripts/reset_lab.sh run inside the container) gives a clean lab.
+
+  # Optional: fully containerized Ollama instead of a host-native install.
+  # Start with: docker compose --profile with-ollama up -d
+  # Its port is published to the host (11434:11434), and since `app` runs
+  # with network_mode: host, OLLAMA_URL=http://127.0.0.1:11434 (the
+  # default) reaches it either way -- no change needed.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["with-ollama"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama-models:

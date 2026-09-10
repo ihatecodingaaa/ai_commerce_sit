@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Products - ShopLite{% endblock %}
+{% block content %}
+<section class="hero animate-in">
+  <span class="hero-badge">&#9889; Free shipping over $50</span>
+  <h1>Small gadgets, big upgrades.</h1>
+  <p>Earbuds, trackers, chargers and more &mdash; curated electronics for everyday life.</p>
+</section>
+
+<div class="section-heading">
+  <h2>All products</h2>
+  <span class="muted">{{ products|length }} items</span>
+</div>
+
+<div class="product-grid stagger">
+  {% for p in products %}
+  <div class="product-card">
+    <div class="product-thumb thumb-{{ loop.index0 % 6 }}">{{ p.name[0]|upper }}</div>
+    <div class="product-card-body">
+      <span class="category-badge">{{ p.category }}</span>
+      <h3><a href="/products/{{ p.id }}">{{ p.name }}</a></h3>
+      <p class="desc">{{ p.description[:100] }}{% if p.description|length > 100 %}&hellip;{% endif %}</p>
+      <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
+      <div class="price">${{ "%.2f"|format(p.price_cents / 100) }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

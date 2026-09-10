@@ -1,0 +1,52 @@
+"""Verifies ordinary customer endpoints/tools are properly scoped, so the
+chatbot vulnerability tested elsewhere is not just "everything is
+unauthenticated".
+"""
+from app.tools.customer_lookup import customer_lookup
+from app.tools.order_lookup import order_lookup
+from app.tools.ticket_search import ticket_search
+
+
+def test_orders_api_requires_login(client):
+    resp = client.get("/orders")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_chat_api_requires_login(client):
+    resp = client.post("/api/chat", json={"message": "hi"})
+    assert resp.status_code == 401
+
+
+def test_order_lookup_tool_is_scoped_to_caller(alice, bob):
+    # alice's orders must not include bob's, and vice versa.
+    alice_orders = order_lookup(user_id=alice["id"])["orders"]
+    bob_orders = order_lookup(user_id=bob["id"])["orders"]
+
+    alice_ids = {o["id"] for o in alice_orders}
+    bob_ids = {o["id"] for o in bob_orders}
+    assert alice_ids.isdisjoint(bob_ids)
+    assert len(alice_orders) > 0
+    assert len(bob_orders) > 0
+
+
+def test_customer_lookup_tool_cannot_target_other_customer(alice, bob):
+    # The tool signature has no parameter for "which customer" -- it always
+    # returns the bound caller's own profile.
+    result = customer_lookup(user_id=alice["id"])
+    assert result["customer"]["id"] == alice["id"]
+    assert result["customer"]["username"] == "alice.customer"
+
+
+def test_ticket_search_excludes_internal_tickets(alice):
+    # Customer-scoped ticket_search must never surface internal engineering
+    # tickets, even when queried with terms that would match them.
+    result = ticket_search(user_id=alice["id"], query="support-image-service")
+    refs = [t["ticket_ref"] for t in result["tickets"]]
+    assert "INC-10492" not in refs
+    assert "INC-10480" not in refs
+
+
+def test_review_submission_requires_login(client):
+    resp = client.post("/api/products/1/reviews", json={"rating": 5, "body": "nice"})
+    assert resp.status_code == 401

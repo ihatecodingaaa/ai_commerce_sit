@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Account - ShopLite{% endblock %}
+{% block content %}
+<h1>Your account</h1>
+
+<div class="card profile-card animate-in">
+  <span class="avatar profile-avatar">{{ user.full_name[0]|upper }}</span>
+  <div>
+    <h3 style="margin-bottom:0.15rem">{{ user.full_name }}</h3>
+    <span class="muted">@{{ user.username }}</span>
+  </div>
+</div>
+
+<div class="card animate-in" style="padding:1.5rem;">
+  <dl class="info-grid">
+    <div class="info-item"><dt>Email</dt><dd>{{ user.email }}</dd></div>
+    <div class="info-item"><dt>Username</dt><dd>{{ user.username }}</dd></div>
+    <div class="info-item"><dt>Member since</dt><dd>{{ user.created_at }}</dd></div>
+    <div class="info-item"><dt>Account type</dt><dd>Customer</dd></div>
+  </dl>
+</div>
+{% endblock %}

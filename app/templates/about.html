@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}About - ShopLite{% endblock %}
+{% block content %}
+<h1>About ShopLite</h1>
+<p class="muted">ShopLite is a small online electronics and gadgets store (demo data only).</p>
+
+<h2 style="margin-top:2rem">Our team</h2>
+<ul class="employee-list stagger">
+  {% for e in employees %}
+    <li><span class="avatar">{{ e.name[0]|upper }}</span> <div><strong>{{ e.name }}</strong><br><span class="muted" style="font-size:0.82rem">{{ e.title }} &middot; {{ e.department }}</span></div></li>
+  {% endfor %}
+</ul>
+{% endblock %}
