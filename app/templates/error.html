@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} - ShopLite{% endblock %}
+{% block content %}
+<div class="empty-state animate-in" style="padding:4rem 1rem;">
+  <h1 style="font-size:3rem; margin-bottom:0.25rem;">{{ code }}</h1>
+  <p class="muted" style="font-size:1.05rem;">{{ message }}</p>
+  <a href="/products" class="btn btn-primary" style="margin-top:1rem;">Back to products</a>
+</div>
+{% endblock %}

@@ -20,11 +20,17 @@
           <a href="/orders" class="{{ 'active' if request.path == '/orders' else '' }}">Orders</a>
           <a href="/support" class="{{ 'active' if request.path == '/support' else '' }}">Support</a>
           <a href="/account" class="{{ 'active' if request.path == '/account' else '' }}">Account</a>
+          {% if user.role == 'admin' %}
+          <a href="/admin/products" class="{{ 'active' if request.path.startswith('/admin') else '' }}">Admin</a>
+          {% endif %}
         {% endif %}
       </nav>
       <div class="auth-area">
         {% if user %}
-          <span class="hello-chip"><span class="avatar">{{ user.full_name[0]|upper }}</span> {{ user.full_name.split(' ')[0] }}</span>
+          <span class="hello-chip">
+            <span class="avatar">{{ user.full_name[0]|upper }}</span> {{ user.full_name.split(' ')[0] }}
+            {% if user.role == 'admin' %}<span class="category-badge">Admin</span>{% endif %}
+          </span>
           <form action="/logout" method="post" style="display:inline">
             <button type="submit" class="link-btn">Log out</button>
           </form>

@@ -44,6 +44,17 @@ def seed(conn: sqlite3.Connection):
         )
         customer_ids[username] = cur.lastrowid
 
+    # ---- Admin account ----------------------------------------------------
+    # Logs in through the same /login route as any customer; the ONLY thing
+    # that grants admin capability is role='admin' on this row. Self-
+    # registration (app/routes/auth_routes.py) always hardcodes
+    # role='customer' and has no field to request otherwise -- admin
+    # accounts only ever come from seed data, never from a signup form.
+    cur.execute(
+        "INSERT INTO users (username, email, password_hash, full_name, role) VALUES (?, ?, ?, ?, 'admin')",
+        ("admin", "admin@shoplite-lab.test", hash_password("AdminLab123!"), "Site Administrator"),
+    )
+
     # ---- Employees (directory only, not login accounts) -----------------
     employees = [
         ("Alice Tan", "Head of Customer Operations", "Customer Operations", "alice.tan@shoplite-lab.test"),

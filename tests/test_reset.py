@@ -13,7 +13,7 @@ def test_reset_restores_known_seed_state(client, alice):
     seed_module.main()
 
     after_users = query_all("SELECT username FROM users ORDER BY username")
-    assert [u["username"] for u in after_users] == ["alice.customer", "bob.customer"]
+    assert [u["username"] for u in after_users] == ["admin", "alice.customer", "bob.customer"]
 
     after_reviews = query_all("SELECT id FROM reviews")
     assert len(after_reviews) == 2  # back to exactly the seed reviews

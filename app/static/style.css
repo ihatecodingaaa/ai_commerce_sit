@@ -569,6 +569,11 @@ form { margin: 0; }
   transform-origin: bottom right;
   animation: chatOpen var(--med) var(--ease) both;
 }
+/* #chat-panel's own `display: flex` (ID specificity) otherwise beats the
+   browser default `[hidden] { display: none }` rule, so toggling the
+   `hidden` attribute from JS would do nothing visually -- this rule has
+   higher specificity than both and actually hides it. */
+#chat-panel[hidden] { display: none; }
 @keyframes chatOpen {
   from { opacity: 0; transform: scale(0.9) translateY(12px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
