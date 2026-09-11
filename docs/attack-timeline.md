@@ -132,7 +132,15 @@ checked against exactly one constant and grants exactly these three
 routes.
 **Mechanism:** simple shared-bearer-token auth, intentionally a *separate*
 trust boundary from the customer session (Stage 1-6 access does not by
-itself grant this — the token had to be discovered).
+itself grant this — the token had to be discovered). This isn't a token
+that exists only for the exploit: `app/services/image_client.py` is a
+legitimate in-app caller — an admin attaching a screenshot to a customer
+ticket (`POST /api/admin/tickets/<id>/screenshot`, `require_admin`-gated)
+triggers this backend, server-side, to call the same `/api/images/upload`
+route with the credential it holds in-process. The browser never sees the
+token either way; the vulnerability is that the token alone (not *who* — or
+*what process* — presents it) is what the service checks, so anyone who
+obtains the value gets exactly the same access this legitimate caller has.
 **Log evidence:** `service_token_used` (action=list/get/upload),
 `service_token_auth_failed` for wrong/missing tokens.
 **Mitigation:** short-lived, scoped tokens (not a static long-lived
