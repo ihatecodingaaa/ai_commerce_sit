@@ -3,7 +3,12 @@ import uuid
 from flask import Blueprint, jsonify, request
 
 from app.auth import current_user, require_login
-from app.chatbot.agent import get_visible_history, handle_chat_message, reset_conversation
+from app.chatbot.agent import (
+    get_visible_history,
+    handle_chat_message,
+    reset_all_conversations,
+    reset_conversation,
+)
 
 bp = Blueprint("api_chat", __name__, url_prefix="/api")
 
@@ -42,4 +47,17 @@ def chat_endpoint():
 def chat_reset():
     user = current_user()
     reset_conversation(user["id"])
+    return jsonify({"status": "reset"})
+
+
+@bp.route("/internal/chat/reset-all", methods=["POST"])
+def chat_reset_all():
+    """Wipe in-memory chat history for every user. No login check -- this
+    is meant for scripts/reset_lab.sh (running inside the same container/
+    host network namespace), not for end users, so it's restricted to
+    loopback callers instead of a session.
+    """
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        return jsonify({"error": "forbidden"}), 403
+    reset_all_conversations()
     return jsonify({"status": "reset"})

@@ -21,29 +21,37 @@ if [ -d ".venv" ]; then
   source .venv/bin/activate
 fi
 
-echo "[1/5] clearing uploaded files (removes any exploit payloads from prior runs)"
+echo "[1/6] clearing uploaded files (removes any exploit payloads from prior runs)"
 UPLOAD_DIR="${UPLOAD_DIR:-uploads/images}"
 rm -rf "${UPLOAD_DIR:?}"/*
 mkdir -p "$UPLOAD_DIR"
 touch "$UPLOAD_DIR/.gitkeep"
 
-echo "[2/5] clearing admin/catalog-sync product photos (seed.py repopulates the deterministic ones next)"
+echo "[2/6] clearing admin/catalog-sync product photos (seed.py repopulates the deterministic ones next)"
 PRODUCT_PHOTO_DIR="${PRODUCT_PHOTO_DIR:-media/product_photos}"
 rm -rf "${PRODUCT_PHOTO_DIR:?}"/*
 mkdir -p "$PRODUCT_PHOTO_DIR"
 touch "$PRODUCT_PHOTO_DIR/.gitkeep"
 
-echo "[3/5] recreating database (schema + seed data + fake credentials + KB + deterministic product photos)"
+echo "[3/6] recreating database (schema + seed data + fake credentials + KB + deterministic product photos)"
 "$PYTHON_BIN" database/seed.py
 
-echo "[4/5] clearing logs"
+echo "[4/6] clearing logs"
 rm -f logs/*.log logs/*.jsonl 2>/dev/null || true
 
+echo "[5/6] clearing in-memory chat history (kept in the app process, not on disk -- see app/chatbot/agent.py)"
+FLASK_PORT="${FLASK_PORT:-5000}"
+if curl -sf -X POST "http://127.0.0.1:${FLASK_PORT}/api/internal/chat/reset-all" -o /dev/null; then
+  :
+else
+  echo "      warning: could not reach the app on 127.0.0.1:${FLASK_PORT} to clear chat memory (is it running?)"
+fi
+
 if [ "$(id -u)" = "0" ] && [ -f "vulnerable/privilege_escalation/setup_privesc.sh" ]; then
-  echo "[5/5] restoring vulnerable privilege-escalation configuration (running as root)"
+  echo "[6/6] restoring vulnerable privilege-escalation configuration (running as root)"
   bash vulnerable/privilege_escalation/setup_privesc.sh
 else
-  echo "[5/5] skipped: not running as root, so the appuser/sudoers/flags"
+  echo "[6/6] skipped: not running as root, so the appuser/sudoers/flags"
   echo "      privilege-escalation state was left untouched. This is expected"
   echo "      for a native/non-Docker install (Stages 8-12 only run inside"
   echo "      the app container). To restore it inside Docker, run:"

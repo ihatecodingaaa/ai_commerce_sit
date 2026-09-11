@@ -148,6 +148,16 @@ def reset_conversation(user_id: int):
     _conversations.pop(user_id, None)
 
 
+def reset_all_conversations():
+    """Clear every user's in-memory history. Conversation state lives only
+    in this process (see module docstring), so a lab reset that only
+    touches the database/filesystem leaves it untouched -- this is what
+    scripts/reset_lab.sh calls (via the loopback-only endpoint in
+    app/routes/api_chat.py) to actually clear it.
+    """
+    _conversations.clear()
+
+
 def get_visible_history(user_id: int) -> list[dict]:
     """Return just the user/assistant turns (no system prompt, no raw tool
     results) so the frontend can re-render a conversation after a page
