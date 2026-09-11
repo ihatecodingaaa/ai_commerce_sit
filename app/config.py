@@ -40,7 +40,15 @@ class Config:
         os.environ.get("TOKEN_ROTATION_INTERVAL_SECONDS", "1800")
     )
 
+    # The vulnerable internal image-management store (support-image-service).
     UPLOAD_DIR = str(BASE_DIR / os.environ.get("UPLOAD_DIR", "uploads/images"))
+
+    # Legitimate, admin-only product photo storage -- deliberately a
+    # separate top-level directory from UPLOAD_DIR above, not a sibling
+    # inside uploads/, so the two upload pipelines (one deliberately
+    # vulnerable, one properly validated) never share a filesystem path or
+    # a database table. See app/services/product_photos.py.
+    PRODUCT_PHOTO_DIR = str(BASE_DIR / os.environ.get("PRODUCT_PHOTO_DIR", "media/product_photos"))
 
     LOG_DIR = str(BASE_DIR / os.environ.get("LOG_DIR", "logs"))
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")

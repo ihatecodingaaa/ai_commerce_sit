@@ -15,7 +15,11 @@
 <div class="product-grid stagger">
   {% for p in products %}
   <a class="product-card" href="/products/{{ p.id }}">
+    {% if p.image_path %}
+    <div class="product-thumb"><img src="/product-photos/{{ p.image_path }}" alt="{{ p.name }}" loading="lazy"></div>
+    {% else %}
     <div class="product-thumb thumb-{{ loop.index0 % 6 }}">{{ p.name[0]|upper }}</div>
+    {% endif %}
     <div class="product-card-body">
       <span class="category-badge">{{ p.category }}</span>
       <h3>{{ p.name }}</h3>

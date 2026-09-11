@@ -33,29 +33,42 @@ def seed(conn: sqlite3.Connection):
 
     # ---- Customers -----------------------------------------------------
     customers = [
-        ("alice.customer", "alice.customer@example-lab.test", "Customer123!", "Alice Customer"),
-        ("bob.customer", "bob.customer@example-lab.test", "Customer123!", "Bob Customer"),
+        ("alice.customer", "alice.customer@example-lab.test", "Customer123!", "Alice Customer", "panda"),
+        ("bob.customer", "bob.customer@example-lab.test", "Customer123!", "Bob Customer", "owl"),
     ]
     customer_ids = {}
-    for username, email, pw, full_name in customers:
+    for username, email, pw, full_name, avatar in customers:
         cur.execute(
-            "INSERT INTO users (username, email, password_hash, full_name, role) VALUES (?, ?, ?, ?, 'customer')",
-            (username, email, hash_password(pw), full_name),
+            "INSERT INTO users (username, email, password_hash, full_name, role, avatar) VALUES (?, ?, ?, ?, 'customer', ?)",
+            (username, email, hash_password(pw), full_name, avatar),
         )
         customer_ids[username] = cur.lastrowid
 
+    # ---- Admin account ----------------------------------------------------
+    # Logs in through the same /login route as any customer; the ONLY thing
+    # that grants admin capability is role='admin' on this row. Self-
+    # registration (app/routes/auth_routes.py) always hardcodes
+    # role='customer' and has no field to request otherwise -- admin
+    # accounts only ever come from seed data, never from a signup form.
+    cur.execute(
+        "INSERT INTO users (username, email, password_hash, full_name, role, avatar) VALUES (?, ?, ?, ?, 'admin', ?)",
+        ("admin", "admin@shoplite-lab.test", hash_password("AdminLab123!"), "Site Administrator", "robot"),
+    )
+
     # ---- Employees (directory only, not login accounts) -----------------
+    # `photo` is a filename under app/static/team/ -- placeholders shipped
+    # with the repo; see app/static/team/README.md for how to swap them.
     employees = [
-        ("Alice Tan", "Head of Customer Operations", "Customer Operations", "alice.tan@shoplite-lab.test"),
-        ("Priya Nair", "Platform Engineer", "Infrastructure", "priya.nair@shoplite-lab.test"),
-        ("Marcus Webb", "Site Reliability Engineer", "Infrastructure", "marcus.webb@shoplite-lab.test"),
-        ("Dana Okafor", "Support Team Lead", "Customer Operations", "dana.okafor@shoplite-lab.test"),
+        ("Alice Tan", "Head of Customer Operations", "Customer Operations", "alice.tan@shoplite-lab.test", "alice-tan.jpg"),
+        ("Priya Nair", "Platform Engineer", "Infrastructure", "priya.nair@shoplite-lab.test", "priya-nair.jpg"),
+        ("Marcus Webb", "Site Reliability Engineer", "Infrastructure", "marcus.webb@shoplite-lab.test", "marcus-webb.jpg"),
+        ("Dana Okafor", "Support Team Lead", "Customer Operations", "dana.okafor@shoplite-lab.test", "dana-okafor.svg"),
     ]
     emp_ids = {}
-    for name, title, dept, email in employees:
+    for name, title, dept, email, photo in employees:
         cur.execute(
-            "INSERT INTO employees (name, title, department, email) VALUES (?, ?, ?, ?)",
-            (name, title, dept, email),
+            "INSERT INTO employees (name, title, department, email, photo) VALUES (?, ?, ?, ?, ?)",
+            (name, title, dept, email, photo),
         )
         emp_ids[name] = cur.lastrowid
 
@@ -88,6 +101,12 @@ def seed(conn: sqlite3.Connection):
     cur.execute(
         "INSERT INTO orders (user_id, product_id, quantity, total_cents, status) VALUES (?, ?, 1, 8999, 'placed')",
         (customer_ids["bob.customer"], product_ids[2]),
+    )
+
+    # ---- Cart (seed one item so /cart isn't empty on first login) -----------
+    cur.execute(
+        "INSERT INTO cart_items (user_id, product_id, quantity) VALUES (?, ?, 1)",
+        (customer_ids["alice.customer"], product_ids[3]),
     )
 
     # ---- Reviews (legitimate seed reviews) ----------------------------------

@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS images;
 DROP TABLE IF EXISTS kb_articles;
 DROP TABLE IF EXISTS tickets;
 DROP TABLE IF EXISTS reviews;
+DROP TABLE IF EXISTS cart_items;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS products;
 DROP TABLE IF EXISTS employees;
@@ -19,7 +20,14 @@ CREATE TABLE users (
     email         TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     full_name     TEXT NOT NULL,
-    role          TEXT NOT NULL DEFAULT 'customer',   -- 'customer' | 'staff'
+    role          TEXT NOT NULL DEFAULT 'customer',   -- 'customer' | 'admin'
+    -- Preset key (e.g. 'fox') or 'letter' -- see app/avatars.py. Deliberately
+    -- NOT a file path: profile pictures are chosen from a fixed,
+    -- server-defined library, not uploaded, so the account-editing feature
+    -- never becomes a second file-upload surface. The only intentional
+    -- file-upload vulnerability in this lab stays the one reachable via
+    -- the leaked support-image-service token.
+    avatar        TEXT NOT NULL DEFAULT 'letter',
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -31,7 +39,10 @@ CREATE TABLE employees (
     name        TEXT NOT NULL,
     title       TEXT NOT NULL,
     department  TEXT NOT NULL,
-    email       TEXT NOT NULL
+    email       TEXT NOT NULL,
+    -- Filename under app/static/team/ -- a placeholder shipped with the
+    -- repo; see that directory's README for how to swap in a real photo.
+    photo       TEXT NOT NULL
 );
 
 CREATE TABLE products (
@@ -51,6 +62,19 @@ CREATE TABLE orders (
     total_cents INTEGER NOT NULL,
     status      TEXT NOT NULL DEFAULT 'placed',
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Items sitting in a customer's cart, not yet checked out. Checkout
+-- (app/routes/api_cart.py) converts these into `orders` rows and clears
+-- them; nothing here becomes an order until the customer actually checks
+-- out, same as a real storefront.
+CREATE TABLE cart_items (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id),
+    product_id  INTEGER NOT NULL REFERENCES products(id),
+    quantity    INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(user_id, product_id)
 );
 
 -- Customer-controlled content. This is the injection surface: review bodies
@@ -79,8 +103,29 @@ CREATE TABLE tickets (
     body          TEXT NOT NULL,
     service       TEXT,
     environment   TEXT,
-    status        TEXT NOT NULL DEFAULT 'open',
+    status        TEXT NOT NULL DEFAULT 'open',       -- 'open' | 'in_progress' | 'resolved'
     visibility    TEXT NOT NULL DEFAULT 'customer',  -- 'customer' | 'internal'
+    -- Set by an admin via /admin/tickets (app/routes/api_admin_tickets.py).
+    -- A single reply field, not a thread -- enough for this lab's scope.
+    admin_reply   TEXT,
+    -- Optional screenshot an admin attached while working the ticket
+    -- (e.g. "here's what I see on my end"). Set via POST
+    -- /api/admin/tickets/<id>/screenshot, which stores the file through
+    -- the internal image-management service (app/services/image_client.py)
+    -- -- this is the legitimate, admin-only path into the same
+    -- support-image-service upload pipeline that /api/images/upload
+    -- exposes directly to anyone holding the service token.
+    screenshot_image_id INTEGER REFERENCES images(id),
+    -- Optional photo the CUSTOMER attached to their own ticket (e.g. "here's
+    -- what the defect looks like"). Set via POST
+    -- /api/tickets/<id>/screenshot (app/routes/api_support.py), ownership-
+    -- checked the same way ticket_search.py scopes reads (user_id = ? AND
+    -- visibility = 'customer'). Stored through the exact same
+    -- support-image-service pipeline as the admin's screenshot above --
+    -- two independent, legitimate business reasons the internal image
+    -- service and its token exist, both equally impersonated by anyone who
+    -- obtains the token directly.
+    customer_screenshot_image_id INTEGER REFERENCES images(id),
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

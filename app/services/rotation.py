@@ -66,12 +66,19 @@ def rotate_support_image_service_token() -> str:
 
 
 def _scheduler_loop(interval_seconds: int):
+    # Rotates once immediately (not just after the first `interval_seconds`
+    # sleep) so the in-process plaintext cache (app/services/credentials.py
+    # -- what get_current_plaintext_for_admin() reads) is populated as soon
+    # as the app boots, not just up to `interval_seconds` later. Legitimate
+    # in-process callers (app/services/image_client.py) rely on that cache
+    # being warm from startup, the same way any real service depending on a
+    # freshly-rotated credential would expect it to already be valid.
     while True:
-        time.sleep(interval_seconds)
         try:
             rotate_support_image_service_token()
         except Exception as exc:  # noqa: BLE001 - a rotation failure must not kill the thread
             log_event("service_credential_rotation_error", service_name=SERVICE_NAME, error=str(exc))
+        time.sleep(interval_seconds)
 
 
 def start_rotation_scheduler(interval_seconds: int):

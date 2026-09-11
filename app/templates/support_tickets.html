@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Support Tickets - ShopLite{% endblock %}
+{% block content %}
+{% set active = 'tickets' %}
+<div class="section-heading">
+  <h1>Support tickets</h1>
+</div>
+<p class="muted" style="margin-top:-0.5rem;">Need something a human should look at? Open a ticket below. Prefer a quick answer first? Try the <a href="/support">chat</a>.</p>
+
+{% include "_support_subnav.html" %}
+
+<div class="card animate-in" style="padding:1.1rem 1.25rem; margin: 0 0 1.75rem; max-width:640px;">
+  <h3 style="margin-bottom:0.75rem">Open a new ticket</h3>
+  <form id="ticket-form">
+    <label>Subject</label>
+    <input id="ticket-subject" type="text" placeholder="Short summary of your issue">
+    <label>Details</label>
+    <textarea id="ticket-body" rows="3" placeholder="Describe your issue..."></textarea>
+    <button type="submit" class="btn btn-primary" style="margin-top:0.9rem">Submit ticket</button>
+  </form>
+</div>
+
+<div class="section-heading"><h2>Your tickets</h2></div>
+{% if tickets %}
+<ul class="ticket-list stagger">
+  {% for t in tickets %}
+  <li class="card ticket-card" data-ticket-id="{{ t.id }}">
+    <div class="ticket-card-head">
+      <div>
+        <strong>{{ t.subject }}</strong>
+        <span class="muted" style="font-size:0.8rem; display:block;">{{ t.ticket_ref }} &middot; opened {{ t.created_at }}</span>
+      </div>
+      <span class="badge badge-{{ t.status }}">{{ t.status.replace('_', ' ') }}</span>
+    </div>
+    <p style="margin:0.6rem 0 0;">{{ t.body }}</p>
+    {% if t.admin_reply %}
+    <div class="ticket-reply">
+      <strong style="font-size:0.82rem;">Support team reply</strong>
+      <p style="margin:0.3rem 0 0;">{{ t.admin_reply }}</p>
+    </div>
+    {% endif %}
+
+    <div class="ticket-screenshot-row" style="margin-top:0.75rem;">
+      <label>Attach a photo (e.g. what the issue looks like)</label>
+      {% if t.customer_screenshot_image_id %}
+      <div style="margin:0.3rem 0;">
+        <img src="/api/tickets/{{ t.id }}/screenshot" alt="Your attached photo" style="max-width:220px; border-radius:var(--radius-sm); border:1px solid var(--border);">
+      </div>
+      {% endif %}
+      <input type="file" class="ticket-screenshot-input" accept="image/*" style="font-size:0.85rem;">
+      <button type="button" class="btn btn-secondary btn-sm upload-ticket-screenshot" style="margin-top:0.4rem;">Upload photo</button>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty-state">No tickets yet.</div>
+{% endif %}
+
+<script>
+document.getElementById('ticket-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('button');
+  const subject = document.getElementById('ticket-subject').value;
+  const body = document.getElementById('ticket-body').value;
+  if (!subject.trim() || !body.trim()) { showToast('Fill in both fields first.', 'error'); return; }
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/tickets', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({subject, body})
+    });
+    if (res.ok) {
+      showToast('Ticket submitted! Refreshing...', 'success');
+      setTimeout(() => location.reload(), 700);
+    } else {
+      showToast('Error submitting ticket.', 'error');
+      btn.disabled = false;
+    }
+  } catch (err) {
+    showToast('Network error submitting ticket.', 'error');
+    btn.disabled = false;
+  }
+});
+
+document.querySelectorAll('.upload-ticket-screenshot').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const card = btn.closest('.ticket-card');
+    const ticketId = card.dataset.ticketId;
+    const input = card.querySelector('.ticket-screenshot-input');
+    const file = input.files[0];
+    if (!file) {
+      showToast('Choose an image file first.', 'error');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}/screenshot`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        showToast('Photo attached.', 'success');
+        location.reload();
+      } else {
+        showToast('Error uploading photo.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error uploading photo.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+});
+</script>
+{% endblock %}

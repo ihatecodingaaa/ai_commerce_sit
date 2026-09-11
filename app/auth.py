@@ -9,7 +9,7 @@ unauthenticated".
 """
 from functools import wraps
 
-from flask import g, jsonify, session
+from flask import abort, g, jsonify, redirect, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.models.db import query_one
@@ -37,6 +37,59 @@ def require_login(fn):
         user = current_user()
         if user is None:
             return jsonify({"error": "authentication required"}), 401
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+def require_customer(fn):
+    """For JSON/API routes that only make sense for a shopping customer
+    (the cart/checkout flow): 401 if not logged in, 403 for an admin
+    account. Admin is a staff role, not a customer -- it should never be
+    able to place an order, enforced here server-side rather than just by
+    hiding the "Add to cart" button in the UI.
+    """
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        user = current_user()
+        if user is None:
+            return jsonify({"error": "authentication required"}), 401
+        if user["role"] != "customer":
+            return jsonify({"error": "only customer accounts can use the cart"}), 403
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+def require_admin(fn):
+    """For JSON/API routes: 401 if not logged in, 403 if logged in but not
+    an admin. There is no client-supplied "am I admin" input anywhere --
+    role is read from the users row loaded off the session, same as every
+    other authorization check in this app.
+    """
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        user = current_user()
+        if user is None:
+            return jsonify({"error": "authentication required"}), 401
+        if user["role"] != "admin":
+            return jsonify({"error": "admin access required"}), 403
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+def require_admin_page(fn):
+    """For HTML page routes: redirect to /login if not authenticated,
+    403 page if authenticated but not an admin.
+    """
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        user = current_user()
+        if user is None:
+            return redirect(url_for("auth.login"))
+        if user["role"] != "admin":
+            abort(403)
         return fn(*args, **kwargs)
 
     return wrapper

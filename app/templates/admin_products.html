@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}Admin - Products - ShopLite{% endblock %}
+{% block content %}
+{% set active = 'products' %}
+<div class="section-heading">
+  <h1>Manage products</h1>
+</div>
+{% include "_admin_subnav.html" %}
+<div class="section-heading">
+  <span></span>
+  <button id="new-product-toggle" class="btn btn-primary btn-sm">+ New product</button>
+</div>
+
+<div id="new-product-card" class="card" style="padding:1.1rem 1.25rem; margin-bottom:1.25rem;" hidden>
+  <h3 style="margin-bottom:0.75rem">New product</h3>
+  <form id="new-product-form">
+    <div class="field-row">
+      <div style="flex:2; min-width:200px;">
+        <label>Name</label>
+        <input type="text" class="f-name" required>
+      </div>
+      <div style="flex:1; min-width:120px;">
+        <label>Category</label>
+        <input type="text" class="f-category" required>
+      </div>
+      <div style="flex:1; min-width:100px;">
+        <label>Price (USD)</label>
+        <input type="number" class="f-price" min="0.01" step="0.01" required>
+      </div>
+    </div>
+    <label>Description</label>
+    <textarea class="f-description" rows="2" required></textarea>
+    <label>Photo <span class="muted" style="font-weight:400">(JPEG, PNG, GIF, or WebP -- optional)</span></label>
+    <input type="file" class="f-photo" accept="image/*">
+    <button type="submit" class="btn btn-primary" style="margin-top:0.9rem">Create product</button>
+  </form>
+</div>
+
+<div class="data-table-wrap animate-in">
+  <table class="data-table" id="admin-products-table">
+    <thead><tr><th></th><th>Name</th><th>Category</th><th>Price</th><th>Description</th><th></th></tr></thead>
+    <tbody>
+    {% for p in products %}
+      <tr data-product-id="{{ p.id }}" data-full-description="{{ p.description }}" data-image-path="{{ p.image_path or '' }}">
+        <td>
+          {% if p.image_path %}
+          <img class="admin-thumb" src="/product-photos/{{ p.image_path }}" alt="">
+          {% else %}
+          <span class="admin-thumb admin-thumb-empty">&mdash;</span>
+          {% endif %}
+        </td>
+        <td class="f-name-cell">{{ p.name }}</td>
+        <td class="f-category-cell">{{ p.category }}</td>
+        <td class="f-price-cell" data-cents="{{ p.price_cents }}">${{ "%.2f"|format(p.price_cents / 100) }}</td>
+        <td class="f-description-cell muted" style="max-width:280px;">{{ p.description[:90] }}{% if p.description|length > 90 %}&hellip;{% endif %}</td>
+        <td>
+          <div class="field-row" style="gap:0.4rem;">
+            <button type="button" class="icon-btn edit-product" title="Edit">&#9998;</button>
+            <button type="button" class="icon-btn delete-review delete-product" title="Delete">&#128465;</button>
+          </div>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="empty-state">No products yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+const newToggle = document.getElementById('new-product-toggle');
+const newCard = document.getElementById('new-product-card');
+newToggle.addEventListener('click', () => {
+  newCard.hidden = !newCard.hidden;
+  newToggle.textContent = newCard.hidden ? '+ New product' : 'Cancel';
+});
+
+document.getElementById('new-product-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const payload = new FormData();
+  payload.set('name', form.querySelector('.f-name').value.trim());
+  payload.set('category', form.querySelector('.f-category').value.trim());
+  payload.set('price', form.querySelector('.f-price').value);
+  payload.set('description', form.querySelector('.f-description').value.trim());
+  const photoFile = form.querySelector('.f-photo').files[0];
+  if (photoFile) payload.set('photo', photoFile);
+
+  const btn = form.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/admin/products', { method: 'POST', body: payload });
+    const data = await res.json();
+    if (res.ok) {
+      showToast('Product created.', 'success');
+      setTimeout(() => location.reload(), 500);
+    } else {
+      showToast(data.error || 'Error creating product.', 'error');
+      btn.disabled = false;
+    }
+  } catch (err) {
+    showToast('Network error creating product.', 'error');
+    btn.disabled = false;
+  }
+});
+
+function rowToEditForm(row) {
+  if (row.querySelector('.row-edit-form')) return;
+  const name = row.querySelector('.f-name-cell').textContent.trim();
+  const category = row.querySelector('.f-category-cell').textContent.trim();
+  const priceCents = row.querySelector('.f-price-cell').dataset.cents;
+  const description = row.dataset.fullDescription || '';
+  const hasPhoto = !!row.dataset.imagePath;
+
+  const cells = row.querySelectorAll('td');
+  cells.forEach(c => c.style.display = 'none');
+
+  const editCell = document.createElement('td');
+  editCell.colSpan = 6;
+  editCell.className = 'row-edit-form';
+  editCell.innerHTML = `
+    <div class="field-row">
+      <div style="flex:2; min-width:160px;"><label>Name</label><input type="text" class="e-name"></div>
+      <div style="flex:1; min-width:110px;"><label>Category</label><input type="text" class="e-category"></div>
+      <div style="flex:1; min-width:90px;"><label>Price (USD)</label><input type="number" class="e-price" min="0.01" step="0.01"></div>
+    </div>
+    <label>Description</label>
+    <textarea class="e-description" rows="2"></textarea>
+    <label>Photo <span class="muted" style="font-weight:400">(leave blank to keep current)</span></label>
+    <input type="file" class="e-photo" accept="image/*">
+    ${hasPhoto ? '<label class="field-inline" style="margin-top:0.4rem"><input type="checkbox" class="e-remove-photo" style="width:auto"> Remove current photo</label>' : ''}
+    <div class="field-row" style="margin-top:0.6rem">
+      <button type="button" class="btn btn-primary btn-sm save-edit">Save</button>
+      <button type="button" class="btn btn-secondary btn-sm cancel-row-edit">Cancel</button>
+    </div>
+  `;
+  row.appendChild(editCell);
+  editCell.querySelector('.e-name').value = name;
+  editCell.querySelector('.e-category').value = category;
+  editCell.querySelector('.e-price').value = (priceCents / 100).toFixed(2);
+  editCell.querySelector('.e-description').value = description;
+
+  editCell.querySelector('.cancel-row-edit').addEventListener('click', () => {
+    editCell.remove();
+    cells.forEach(c => c.style.display = '');
+  });
+
+  editCell.querySelector('.save-edit').addEventListener('click', async () => {
+    const productId = row.dataset.productId;
+    const payload = new FormData();
+    payload.set('name', editCell.querySelector('.e-name').value.trim());
+    payload.set('category', editCell.querySelector('.e-category').value.trim());
+    payload.set('price', editCell.querySelector('.e-price').value);
+    payload.set('description', editCell.querySelector('.e-description').value.trim());
+    const photoFile = editCell.querySelector('.e-photo').files[0];
+    if (photoFile) payload.set('photo', photoFile);
+    const removeCb = editCell.querySelector('.e-remove-photo');
+    if (removeCb && removeCb.checked) payload.set('remove_photo', 'true');
+
+    const saveBtn = editCell.querySelector('.save-edit');
+    saveBtn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/products/${productId}`, { method: 'PUT', body: payload });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Product updated.', 'success');
+        setTimeout(() => location.reload(), 500);
+      } else {
+        showToast(data.error || 'Error updating product.', 'error');
+        saveBtn.disabled = false;
+      }
+    } catch (err) {
+      showToast('Network error updating product.', 'error');
+      saveBtn.disabled = false;
+    }
+  });
+}
+
+document.getElementById('admin-products-table').addEventListener('click', async (e) => {
+  const editBtn = e.target.closest('.edit-product');
+  const deleteBtn = e.target.closest('.delete-product');
+  const row = e.target.closest('tr[data-product-id]');
+  if (!row) return;
+
+  if (editBtn) {
+    rowToEditForm(row);
+    return;
+  }
+  if (deleteBtn) {
+    if (!confirm('Delete this product? This also removes its reviews and order history. This cannot be undone.')) return;
+    const productId = row.dataset.productId;
+    try {
+      const res = await fetch(`/api/admin/products/${productId}`, { method: 'DELETE' });
+      if (res.ok) {
+        row.style.transition = 'opacity 180ms ease';
+        row.style.opacity = '0';
+        setTimeout(() => row.remove(), 180);
+        showToast('Product deleted.', 'success');
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Error deleting product.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error deleting product.', 'error');
+    }
+  }
+});
+</script>
+{% endblock %}

@@ -7,10 +7,15 @@ from app.tools.order_lookup import order_lookup
 from app.tools.ticket_search import ticket_search
 
 
-def test_orders_api_requires_login(client):
-    resp = client.get("/orders")
+def test_cart_page_requires_login(client):
+    resp = client.get("/cart")
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
+
+
+def test_cart_api_requires_login(client):
+    resp = client.post("/api/cart", json={"product_id": 1, "quantity": 1})
+    assert resp.status_code == 401
 
 
 def test_chat_api_requires_login(client):
@@ -50,3 +55,23 @@ def test_ticket_search_excludes_internal_tickets(alice):
 def test_review_submission_requires_login(client):
     resp = client.post("/api/products/1/reviews", json={"rating": 5, "body": "nice"})
     assert resp.status_code == 401
+
+
+def test_cannot_modify_another_customers_cart_item(client):
+    # Alice adds an item, then bob (a separate login on the same shared
+    # test client) must not be able to touch that cart row by id.
+    client.post("/login", data={"username": "alice.customer", "password": "Customer123!"})
+    add = client.post("/api/cart", json={"product_id": 2, "quantity": 1})
+    assert add.status_code == 201
+    from app.models.db import query_one
+
+    alice_item = query_one(
+        "SELECT c.id FROM cart_items c JOIN users u ON u.id = c.user_id "
+        "WHERE u.username = 'alice.customer' AND c.product_id = 2"
+    )
+
+    client.post("/login", data={"username": "bob.customer", "password": "Customer123!"})
+    resp = client.put(f"/api/cart/{alice_item['id']}", json={"quantity": 99})
+    assert resp.status_code == 404
+    resp = client.delete(f"/api/cart/{alice_item['id']}")
+    assert resp.status_code == 404

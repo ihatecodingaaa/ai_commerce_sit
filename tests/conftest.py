@@ -62,3 +62,9 @@ def alice(client):
 def bob(client):
     client.post("/login", data={"username": "bob.customer", "password": "Customer123!"})
     return query_one("SELECT * FROM users WHERE username = 'bob.customer'")
+
+
+@pytest.fixture()
+def admin(client):
+    client.post("/login", data={"username": "admin", "password": "AdminLab123!"})
+    return query_one("SELECT * FROM users WHERE username = 'admin'")

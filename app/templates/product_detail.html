@@ -4,7 +4,11 @@
 <a href="/products" class="back-link">&larr; Back to products</a>
 
 <div class="detail-grid animate-in">
+  {% if product.image_path %}
+  <div class="detail-thumb"><img src="/product-photos/{{ product.image_path }}" alt="{{ product.name }}"></div>
+  {% else %}
   <div class="detail-thumb thumb-{{ product.id % 6 }}">{{ product.name[0]|upper }}</div>
+  {% endif %}
   <div>
     <span class="category-badge">{{ product.category }}</span>
     <h1>{{ product.name }}</h1>
@@ -12,16 +16,18 @@
     <p>{{ product.description }}</p>
     <div class="price" style="font-size:1.4rem">${{ "%.2f"|format(product.price_cents / 100) }}</div>
 
-    {% if user %}
+    {% if user and user.role == 'customer' %}
     <form id="buy-form" class="purchase-panel" data-product-id="{{ product.id }}">
       <div class="field-inline">
         <label style="margin:0">Qty</label>
         <input type="number" id="buy-qty" value="1" min="1">
       </div>
-      <button type="submit" class="btn btn-primary">Buy now</button>
+      <button type="submit" class="btn btn-primary">Add to cart</button>
     </form>
+    {% elif user and user.role == 'admin' %}
+    <p class="muted">Admin accounts manage the catalog but don't place orders. <a href="/admin/products">Edit this product</a>.</p>
     {% else %}
-    <p><a href="/login">Log in</a> to purchase or leave a review.</p>
+    <p><a href="/login">Log in</a> to add this to your cart or leave a review.</p>
     {% endif %}
   </div>
 </div>
@@ -49,7 +55,7 @@
   {% for r in reviews %}
   <li class="review-card" data-review-id="{{ r.id }}" data-rating="{{ r.rating }}">
     <div class="review-head">
-      <span class="avatar">{{ r.username[0]|upper }}</span>
+      <span class="avatar {{ avatar_class(r.avatar) }}">{{ avatar_glyph(r.avatar, r.username) }}</span>
       <strong>{{ r.username }}</strong>
       <span class="stars review-stars" style="font-size:0.75rem">{{ ('&#9733;' * r.rating) | safe }}{{ ('&#9734;' * (5 - r.rating)) | safe }}</span>
       {% if user and r.user_id == user.id %}
@@ -214,21 +220,21 @@ document.getElementById('buy-form')?.addEventListener('submit', async (e) => {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>';
   try {
-    const res = await fetch('/api/orders', {
+    const res = await fetch('/api/cart', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({product_id: productId, quantity})
     });
     if (res.ok) {
-      showToast('Order placed! View it on your Orders page.', 'success');
+      showToast('Added to cart!', 'success');
     } else {
-      showToast('Error placing order.', 'error');
+      showToast('Error adding to cart.', 'error');
     }
   } catch (err) {
-    showToast('Network error placing order.', 'error');
+    showToast('Network error adding to cart.', 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Buy now';
+    btn.textContent = 'Add to cart';
   }
 });
 </script>

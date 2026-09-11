@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Admin - Support Tickets - ShopLite{% endblock %}
+{% block content %}
+{% set active = 'tickets' %}
+<div class="section-heading">
+  <h1>Support tickets</h1>
+  <span class="muted">{{ tickets|length }} open across all customers</span>
+</div>
+{% include "_admin_subnav.html" %}
+
+{% if tickets %}
+<ul class="ticket-list stagger">
+  {% for t in tickets %}
+  <li class="card ticket-card" data-ticket-id="{{ t.id }}">
+    <div class="ticket-card-head">
+      <div>
+        <strong>{{ t.subject }}</strong>
+        <span class="muted" style="font-size:0.8rem; display:block;">
+          {{ t.ticket_ref }} &middot; {{ t.full_name }} (@{{ t.username }}) &middot; opened {{ t.created_at }}
+        </span>
+      </div>
+      <span class="badge badge-{{ t.status }}" id="status-badge-{{ t.id }}">{{ t.status.replace('_', ' ') }}</span>
+    </div>
+    <p style="margin:0.6rem 0;">{{ t.body }}</p>
+    {% if t.customer_screenshot_image_id %}
+    <div style="margin:0 0 0.6rem;">
+      <label class="muted" style="font-size:0.78rem; display:block; margin-bottom:0.25rem;">Photo the customer attached</label>
+      <img src="/api/admin/tickets/{{ t.id }}/customer-screenshot" alt="Customer-attached photo" style="max-width:220px; border-radius:var(--radius-sm); border:1px solid var(--border);">
+    </div>
+    {% endif %}
+
+    <div class="field-row" style="align-items:flex-end;">
+      <div style="flex:1; min-width:160px;">
+        <label>Status</label>
+        <select class="ticket-status">
+          <option value="open" {{ 'selected' if t.status == 'open' }}>Open</option>
+          <option value="in_progress" {{ 'selected' if t.status == 'in_progress' }}>In progress</option>
+          <option value="resolved" {{ 'selected' if t.status == 'resolved' }}>Resolved</option>
+        </select>
+      </div>
+    </div>
+    <label>Reply to customer</label>
+    <textarea class="ticket-reply-input" rows="2" placeholder="Write a reply the customer will see on their ticket...">{{ t.admin_reply or '' }}</textarea>
+    <button type="button" class="btn btn-primary btn-sm save-ticket" style="margin-top:0.6rem;">Save</button>
+
+    <div class="ticket-screenshot-row" style="margin-top:0.75rem;">
+      <label>Attach a screenshot (internal reference)</label>
+      {% if t.screenshot_image_id %}
+      <div style="margin:0.3rem 0;">
+        <img src="/api/admin/tickets/{{ t.id }}/screenshot" alt="Attached screenshot" style="max-width:220px; border-radius:var(--radius-sm); border:1px solid var(--border);">
+      </div>
+      {% endif %}
+      <input type="file" class="ticket-screenshot-input" accept="image/*" style="font-size:0.85rem;">
+      <button type="button" class="btn btn-secondary btn-sm upload-ticket-screenshot" style="margin-top:0.4rem;">Upload screenshot</button>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty-state">No customer tickets yet.</div>
+{% endif %}
+
+<script>
+document.querySelectorAll('.save-ticket').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const card = btn.closest('.ticket-card');
+    const ticketId = card.dataset.ticketId;
+    const status = card.querySelector('.ticket-status').value;
+    const admin_reply = card.querySelector('.ticket-reply-input').value;
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/tickets/${ticketId}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({status, admin_reply}),
+      });
+      if (res.ok) {
+        const badge = document.getElementById(`status-badge-${ticketId}`);
+        badge.className = `badge badge-${status}`;
+        badge.textContent = status.replace('_', ' ');
+        showToast('Ticket updated.', 'success');
+      } else {
+        showToast('Error updating ticket.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error updating ticket.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+});
+
+document.querySelectorAll('.upload-ticket-screenshot').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const card = btn.closest('.ticket-card');
+    const ticketId = card.dataset.ticketId;
+    const input = card.querySelector('.ticket-screenshot-input');
+    const file = input.files[0];
+    if (!file) {
+      showToast('Choose an image file first.', 'error');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/tickets/${ticketId}/screenshot`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        showToast('Screenshot attached.', 'success');
+        location.reload();
+      } else {
+        showToast('Error uploading screenshot.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error uploading screenshot.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+});
+</script>
+{% endblock %}

@@ -25,7 +25,8 @@ getent group shopops >/dev/null || groupadd shopops
 id -u appuser >/dev/null 2>&1 || useradd -m -s /bin/bash -g shopops appuser
 
 echo "[privesc-setup] laying out $SHOP_ROOT"
-mkdir -p "$SHOP_ROOT/scripts" "$SHOP_ROOT/backups" "$SHOP_ROOT/flags" "$SHOP_ROOT/uploads/images" "$SHOP_ROOT/database" "$SHOP_ROOT/logs"
+mkdir -p "$SHOP_ROOT/scripts" "$SHOP_ROOT/backups" "$SHOP_ROOT/flags" "$SHOP_ROOT/uploads/images" \
+         "$SHOP_ROOT/media/product_photos" "$SHOP_ROOT/database" "$SHOP_ROOT/logs"
 
 echo "[privesc-setup] installing backup.sh with the deliberate group-write bug"
 install -m 774 -o root -g shopops "$SCRIPT_DIR/backup.sh" "$SHOP_ROOT/scripts/backup.sh"
@@ -53,6 +54,6 @@ chown root:root /root/final_flag
 chmod 600 /root/final_flag
 
 echo "[privesc-setup] fixing ownership of app tree"
-chown -R appuser:shopops "$SHOP_ROOT/uploads" "$SHOP_ROOT/database" "$SHOP_ROOT/logs" "$SHOP_ROOT/backups" 2>/dev/null || true
+chown -R appuser:shopops "$SHOP_ROOT/uploads" "$SHOP_ROOT/media" "$SHOP_ROOT/database" "$SHOP_ROOT/logs" "$SHOP_ROOT/backups" 2>/dev/null || true
 
 echo "[privesc-setup] done"
