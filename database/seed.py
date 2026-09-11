@@ -8,6 +8,7 @@ this is a lab, not a security control under test at the account-creation
 layer -- but they are still hashed the same way real registrations are.
 """
 import os
+import shutil
 import sqlite3
 import sys
 from pathlib import Path
@@ -27,6 +28,14 @@ from app.services.rotation import (  # noqa: E402
 )
 
 SCHEMA_PATH = BASE_DIR / "database" / "schema.sql"
+
+# Deterministic product photos, committed to the repo (unlike
+# media/product_photos/ itself, which is git-ignored runtime state --
+# see .gitignore). Copied into PRODUCT_PHOTO_DIR below so a fresh seed
+# (and therefore scripts/reset_lab.sh) always restores real-looking
+# product photos instead of leaving every product photo-less, the way a
+# purely admin-uploaded photo would be lost on reset.
+SEED_PHOTOS_DIR = BASE_DIR / "database" / "seed_photos"
 
 
 def rebuild_schema(conn: sqlite3.Connection):
@@ -78,19 +87,27 @@ def seed(conn: sqlite3.Connection):
         emp_ids[name] = cur.lastrowid
 
     # ---- Products ---------------------------------------------------------
+    # Fifth element is the filename under database/seed_photos/, copied into
+    # PRODUCT_PHOTO_DIR below -- see SEED_PHOTOS_DIR's comment above.
     products = [
-        ("Aurora Wireless Earbuds", "Audio", 5999, "Compact true-wireless earbuds with 24h battery life and active noise cancellation."),
-        ("Pulse Fitness Band", "Wearables", 3499, "Lightweight fitness tracker with heart-rate monitoring and 7-day battery."),
-        ("Nimbus Portable SSD 1TB", "Storage", 8999, "USB-C portable SSD, up to 1050MB/s read speeds, shock resistant."),
-        ("Lumen Smart Desk Lamp", "Home", 2999, "Adjustable smart desk lamp with app-controlled brightness and color temperature."),
-        ("Voyager Travel Charger", "Accessories", 1999, "65W GaN USB-C charger with three ports for laptops, phones, and tablets."),
-        ("Echo Mini Bluetooth Speaker", "Audio", 2499, "Palm-sized Bluetooth speaker with surprisingly big sound and IPX6 rating."),
+        ("Aurora Wireless Earbuds", "Audio", 5999, "Compact true-wireless earbuds with 24h battery life and active noise cancellation.", "aurora-wireless-earbuds.png"),
+        ("Pulse Fitness Band", "Wearables", 3499, "Lightweight fitness tracker with heart-rate monitoring and 7-day battery.", "pulse-fitness-band.png"),
+        ("Nimbus Portable SSD 1TB", "Storage", 8999, "USB-C portable SSD, up to 1050MB/s read speeds, shock resistant.", "nimbus-portable-ssd.jpg"),
+        ("Lumen Smart Desk Lamp", "Home", 2999, "Adjustable smart desk lamp with app-controlled brightness and color temperature.", "lumen-smart-desk-lamp.jpg"),
+        ("Voyager Travel Charger", "Accessories", 1999, "65W GaN USB-C charger with three ports for laptops, phones, and tablets.", "voyager-travel-charger.jpg"),
+        ("Echo Mini Bluetooth Speaker", "Audio", 2499, "Palm-sized Bluetooth speaker with surprisingly big sound and IPX6 rating.", "echo-mini-bluetooth-speaker.jpg"),
     ]
     product_ids = []
-    for name, category, price, desc in products:
+    for name, category, price, desc, photo_filename in products:
+        image_path = None
+        src = SEED_PHOTOS_DIR / photo_filename
+        if src.exists():
+            os.makedirs(config.PRODUCT_PHOTO_DIR, exist_ok=True)
+            shutil.copyfile(src, os.path.join(config.PRODUCT_PHOTO_DIR, photo_filename))
+            image_path = photo_filename
         cur.execute(
-            "INSERT INTO products (name, category, price_cents, description) VALUES (?, ?, ?, ?)",
-            (name, category, price, desc),
+            "INSERT INTO products (name, category, price_cents, description, image_path) VALUES (?, ?, ?, ?, ?)",
+            (name, category, price, desc, image_path),
         )
         product_ids.append(cur.lastrowid)
 

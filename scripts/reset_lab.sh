@@ -21,20 +21,20 @@ if [ -d ".venv" ]; then
   source .venv/bin/activate
 fi
 
-echo "[1/4] recreating database (schema + seed data + fake credentials + KB)"
-"$PYTHON_BIN" database/seed.py
-
-echo "[2/5] clearing uploaded files (removes any exploit payloads from prior runs)"
+echo "[1/5] clearing uploaded files (removes any exploit payloads from prior runs)"
 UPLOAD_DIR="${UPLOAD_DIR:-uploads/images}"
 rm -rf "${UPLOAD_DIR:?}"/*
 mkdir -p "$UPLOAD_DIR"
 touch "$UPLOAD_DIR/.gitkeep"
 
-echo "[3/5] clearing admin product photos (products are about to be re-seeded with none)"
+echo "[2/5] clearing admin/catalog-sync product photos (seed.py repopulates the deterministic ones next)"
 PRODUCT_PHOTO_DIR="${PRODUCT_PHOTO_DIR:-media/product_photos}"
 rm -rf "${PRODUCT_PHOTO_DIR:?}"/*
 mkdir -p "$PRODUCT_PHOTO_DIR"
 touch "$PRODUCT_PHOTO_DIR/.gitkeep"
+
+echo "[3/5] recreating database (schema + seed data + fake credentials + KB + deterministic product photos)"
+"$PYTHON_BIN" database/seed.py
 
 echo "[4/5] clearing logs"
 rm -f logs/*.log logs/*.jsonl 2>/dev/null || true

@@ -11,6 +11,7 @@ sys.path.insert(0, str(BASE_DIR))
 _TEST_DIR = Path(tempfile.mkdtemp(prefix="shoplab_test_"))
 os.environ["DATABASE_URL"] = str(_TEST_DIR / "test.db")
 os.environ["UPLOAD_DIR"] = str(_TEST_DIR / "uploads")
+os.environ["PRODUCT_PHOTO_DIR"] = str(_TEST_DIR / "product_photos")
 os.environ["LOG_DIR"] = str(_TEST_DIR / "logs")
 os.environ["SECRET_KEY"] = "test-secret"
 os.environ.setdefault("OLLAMA_URL", "http://127.0.0.1:11434")
