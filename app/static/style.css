@@ -738,6 +738,8 @@ form { margin: 0; }
   cursor: pointer; transition: background var(--fast), color var(--fast), border-color var(--fast);
 }
 .chip-btn:hover { background: var(--brand-100); color: var(--brand-700); border-color: var(--brand-500); }
+.chip-btn:disabled { opacity: 0.5; cursor: default; pointer-events: none; }
+.chip-btn:disabled:hover { background: var(--surface-2); color: var(--text-muted); border-color: var(--border-strong); }
 
 #chat-form { display: flex; gap: 0.5rem; padding: 0.6rem; border-top: 1px solid var(--border); background: var(--surface); }
 #chat-input {

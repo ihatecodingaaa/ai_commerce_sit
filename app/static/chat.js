@@ -50,6 +50,9 @@
   function setBusy(busy) {
     input.disabled = busy;
     if (sendBtn) sendBtn.disabled = busy;
+    if (suggestions) {
+      suggestions.querySelectorAll('.chip-btn').forEach((btn) => { btn.disabled = busy; });
+    }
     if (!busy) input.focus();
   }
 
