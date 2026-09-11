@@ -16,6 +16,13 @@ timer and never pasted anywhere -- see rotation.py's module docstring --
 so /api/images/upload is only ever reachable through this module, not by
 an outside caller presenting a leaked token directly.
 
+Self-healing: if the internal call comes back 401 (e.g. someone reseeded
+the live database via database/seed.py without restarting this process --
+that always writes a fresh random credential, invalidating whatever this
+process has cached), _upload()/fetch_screenshot() regenerate the
+credential and retry once, rather than failing every request until this
+process happens to restart.
+
 Dispatched via current_app.test_client() rather than a real outbound
 socket call to our own port: it still goes through the exact same Flask
 routing/auth/validation code in app/routes/api_images.py (same headers,
@@ -33,20 +40,31 @@ import io
 from flask import current_app
 
 from app.services.credentials import get_current_plaintext_for_admin
-from app.services.rotation import SUPPORT_IMAGE_SERVICE_NAME
+from app.services.rotation import SUPPORT_IMAGE_SERVICE_NAME, ensure_support_image_service_credential
 
 
-def _upload(file_tuple) -> int | None:
-    token = get_current_plaintext_for_admin(SUPPORT_IMAGE_SERVICE_NAME)
-    if not token:
-        return None
+def _upload(data: bytes, filename: str, content_type: str) -> int | None:
     client = current_app.test_client()
-    resp = client.post(
-        "/api/images/upload",
-        headers={"X-Service-Token": token},
-        data={"file": file_tuple},
-        content_type="multipart/form-data",
-    )
+
+    def attempt(token):
+        return client.post(
+            "/api/images/upload",
+            headers={"X-Service-Token": token},
+            data={"file": (io.BytesIO(data), filename, content_type)},
+            content_type="multipart/form-data",
+        )
+
+    token = get_current_plaintext_for_admin(SUPPORT_IMAGE_SERVICE_NAME)
+    resp = attempt(token) if token else None
+    if resp is None or resp.status_code == 401:
+        # Either this process never cached a credential, or the DB-stored
+        # hash no longer matches what we have (e.g. database/seed.py ran
+        # against a live DB without this process restarting -- it always
+        # writes a fresh random value, invalidating whatever we're holding).
+        # Regenerate and retry once instead of failing every request until
+        # this process happens to restart.
+        token = ensure_support_image_service_credential()
+        resp = attempt(token)
     if resp.status_code != 201:
         return None
     return resp.get_json()["image_id"]
@@ -55,10 +73,9 @@ def _upload(file_tuple) -> int | None:
 def upload_screenshot(file_storage) -> int | None:
     """Upload a browser-supplied file (an admin's ticket-screenshot upload
     form) through support-image-service. Returns the new image_id, or None
-    if the current service credential isn't available in-process or the
-    upload was rejected.
+    if the upload was rejected.
     """
-    return _upload((file_storage.stream, file_storage.filename, file_storage.mimetype))
+    return _upload(file_storage.stream.read(), file_storage.filename, file_storage.mimetype)
 
 
 def upload_screenshot_bytes(data: bytes, filename: str, content_type: str) -> int | None:
@@ -68,18 +85,23 @@ def upload_screenshot_bytes(data: bytes, filename: str, content_type: str) -> in
     catalog-sync-token holder submitted, filename (and therefore real
     extension) untouched.
     """
-    return _upload((io.BytesIO(data), filename, content_type))
+    return _upload(data, filename, content_type)
 
 
 def fetch_screenshot(image_id: int):
     """Fetch stored image bytes + content type through support-image-service.
     Returns (bytes, content_type), or None if unavailable/not found.
     """
-    token = get_current_plaintext_for_admin(SUPPORT_IMAGE_SERVICE_NAME)
-    if not token:
-        return None
     client = current_app.test_client()
-    resp = client.get(f"/api/images/{image_id}", headers={"X-Service-Token": token})
+
+    def attempt(token):
+        return client.get(f"/api/images/{image_id}", headers={"X-Service-Token": token})
+
+    token = get_current_plaintext_for_admin(SUPPORT_IMAGE_SERVICE_NAME)
+    resp = attempt(token) if token else None
+    if resp is None or resp.status_code == 401:
+        token = ensure_support_image_service_credential()
+        resp = attempt(token)
     if resp.status_code != 200:
         return None
     return resp.data, resp.headers.get("Content-Type", "application/octet-stream")

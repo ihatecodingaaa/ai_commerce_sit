@@ -74,7 +74,7 @@ def rotate_catalog_sync_service_token() -> str:
     return new_token
 
 
-def ensure_support_image_service_credential() -> None:
+def ensure_support_image_service_credential() -> str:
     """Generate a fresh support-image-service credential in THIS process so
     app/services/image_client.py's in-process calls (admin ticket
     screenshots, catalog-sync photo forwarding) work immediately after
@@ -82,8 +82,12 @@ def ensure_support_image_service_credential() -> None:
     process whose in-memory credential cache never reaches the running
     app. Unlike catalog-sync-service, nothing here ever discloses the
     result anywhere, so there's no ticket/KB update to keep in sync.
+
+    Returns the new plaintext so callers (image_client.py's self-healing
+    retry, in particular) can use it immediately without a second
+    round-trip through get_current_plaintext_for_admin.
     """
-    generate_and_store(SUPPORT_IMAGE_SERVICE_NAME)
+    return generate_and_store(SUPPORT_IMAGE_SERVICE_NAME)
 
 
 def _scheduler_loop(interval_seconds: int):
