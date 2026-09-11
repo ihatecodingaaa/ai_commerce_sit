@@ -1,4 +1,5 @@
 from app.models.db import query_all, query_one
+from app.services.rotation import TICKET_REF
 from database import seed as seed_module
 
 
@@ -21,9 +22,9 @@ def test_reset_restores_known_seed_state(client, alice):
     after_reviews = query_all("SELECT id FROM reviews")
     assert len(after_reviews) == 2  # back to exactly the seed reviews
 
-    inc = query_one("SELECT * FROM tickets WHERE ticket_ref = 'INC-10492'")
+    inc = query_one("SELECT * FROM tickets WHERE ticket_ref = ?", (TICKET_REF,))
     assert inc is not None
     assert inc["visibility"] == "internal"
 
     kb_internal = query_all("SELECT id FROM kb_articles WHERE visibility = 'internal'")
-    assert len(kb_internal) == 2
+    assert len(kb_internal) == 3

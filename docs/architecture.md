@@ -30,18 +30,24 @@
 |             |      rag/retrieval.py  (keyword search over kb_articles,         |
 |             |                         mixes 'public' and 'internal' rows)      |
 |             |                                                                   |
-|             +--> api_images.py  (internal image API, X-Service-Token auth)     |
-|             |            |               == NOT product photos, see below ==   |
+|             +--> api_images.py  (internal image API, X-Service-Token auth --  |
+|             |    never disclosed; only image_client.py ever calls this)       |
+|             |            |                                                     |
 |             |            v                                                     |
 |             |     vulnerable/upload/image_processor.py                        |
 |             |        (imports+executes .py files dropped in the upload dir)    |
-|             |                                                                  |
+|             |            ^                                                     |
+|             |            |                                                     |
 |             +--> admin.py / api_admin.py (require_admin, session auth)         |
-|                         |                                                       |
-|                         v                                                       |
-|              services/product_photos.py  (sniffs real magic bytes, server      |
-|                 picks the extension, random filename -- see "Two upload        |
-|                 pipelines" below)                                              |
+|             |            |                                                     |
+|             |            v                                                     |
+|             |     services/product_photos.py  (sniffs real magic bytes,       |
+|             |        server picks the extension, random filename -- secure)   |
+|             |                                                                  |
+|             +--> api_catalog.py  (X-Catalog-Sync-Token auth -- DISCOVERABLE   |
+|                  via Stage 5/6) --> services/catalog_photos.py (weak ".jpg"   |
+|                  substring check) --> image_client.py --> api_images.py above |
+|                  -- see "Two ways a product photo reaches the storefront"     |
 |                                                                                  |
 |  models/db.py --> SQLite file at /opt/shop/database/shop_lab.db                |
 |                                                                                  |
@@ -76,46 +82,44 @@
    `order_lookup`, `customer_lookup`, `ticket_search`, `refund_request`.
    It does **not** exist for `knowledge_base_search` — that is the lab's
    deliberate vulnerability (see docs/attack-timeline.md Stage 4/5).
-4. **Customer-facing API <-> internal image API**: a completely separate
-   trust boundary (`X-Service-Token` bearer auth, not a customer session).
-   Getting a customer session does not grant access to `/api/images/*`; the
-   token must be independently discovered.
+4. **Customer-facing API <-> internal APIs**: two completely separate
+   trust boundaries, neither a customer session (`app/routes/api_images.py`'s
+   `X-Service-Token` and `app/routes/api_catalog.py`'s
+   `X-Catalog-Sync-Token`). Getting a customer session grants access to
+   neither; only the catalog-sync token is ever discoverable at all (see
+   below), and even that only reaches `/api/catalog/products`, never
+   `/api/images/*` directly.
 5. **App container <-> EC2 host**: the app container is the entire
    "vulnerable host" for Stages 8-12. It is a standard Docker container with
    no bind mount into the host filesystem, no `docker.sock`, no
    `--privileged`, and no added capabilities. Root obtained *inside* the
    container via the privilege-escalation chain stays inside the container.
    See SECURITY.md for the isolation requirements this depends on.
-6. **Admin product photos <-> internal image API**: two entirely separate
-   upload pipelines that share no code, no database table, and no
-   directory. See below.
+6. **Admin product photos <-> catalog-sync product photos**: two
+   independent code paths to the same `products.image_path` column, with
+   very different validation postures. See below.
 
-## Two upload pipelines, not one
+## Two ways a product photo reaches the storefront, not one
 
-It's an easy assumption that `/api/images/*` (the internal, service-token
-API) is what powers product photos in the storefront/admin panel. It
-isn't, and never was -- that's the point. There are two independent
-upload systems in this app:
+It's an easy assumption that a product's photo always goes through the
+same, hardened path. It doesn't -- that's the point. Both end up in the
+same `products.image_path` column and render identically on
+`/products`/`/products/<id>`, but they get there completely differently:
 
-| | `POST /api/images/upload` | `POST/PUT /api/admin/products` (photo field) |
+| | `POST/PUT /api/admin/products` (photo field) | `POST /api/catalog/products` (photo field) |
 |---|---|---|
-| Who can call it | anyone with the current `support-image-service` token (discovered via Stage 5/6, not a customer login) | logged-in `role='admin'` users only (`app/auth.py::require_admin`) |
-| What it's *for* | staff tooling storing ticket screenshot attachments (a narrative internal microservice) | actual storefront product photos, shown on `/products` and `/products/<id>` |
-| File type check | client-supplied `Content-Type` header (attacker-controlled) -- `app/routes/api_images.py` | real file content, sniffed by magic bytes -- `app/services/product_photos.py` |
-| Stored filename | attacker's chosen filename, extension preserved verbatim | server-generated `uuid4().hex` + the extension the sniffer determined, never the client's filename |
-| Stored where | `UPLOAD_DIR` (`uploads/images/`) | `PRODUCT_PHOTO_DIR` (`media/product_photos/`) -- a different top-level directory on purpose |
-| Metadata table | `images` | `products.image_path` |
-| What happens to the file afterward | `vulnerable/upload/image_processor.py` may **import and execute** `.py`-named files | served back as raw bytes via `send_from_directory`, never interpreted as anything but image bytes |
+| Who can call it | logged-in `role='admin'` users only (`app/auth.py::require_admin`) | anyone with the current `catalog-sync-service` token (discovered via Stage 5/6, not a customer login, not an admin session) |
+| What it's *for* | a human admin managing the catalog by hand | the warehouse/inventory system pushing new products with no human present |
+| File type check | real file content, sniffed by magic bytes -- `app/services/product_photos.py` | whether `.jpg` appears anywhere in the filename -- `app/services/catalog_photos.py` |
+| Stored filename | server-generated `uuid4().hex` + the extension the sniffer determined, never the client's filename | forwarded byte-for-byte, real filename (and extension) intact, to the internal image API below |
+| What happens to the file | served back as raw bytes via `send_from_directory`, never interpreted as anything but image bytes | passed through `app/services/image_client.py` to `POST /api/images/upload` (support-image-service's own, never-disclosed credential -- see `app/services/rotation.py`), where `vulnerable/upload/image_processor.py` may **import and execute** `.py`-named files, before a copy is also saved under `PRODUCT_PHOTO_DIR` so the product still displays normally |
 
-If you're looking at this lab and wondering "where do the uploaded
-`support-image-service` images actually show up in the UI" -- they don't.
-Nothing in the customer-facing app ever reads the `images` table or lists
-`UPLOAD_DIR`. That disconnection is intentional: it's a realistic internal
-tool a customer should never be able to reach through the front door, only
-through the credential-leak chain. See `vulnerable/upload/README.md` for
-the deliberate vulnerability, and `app/services/product_photos.py` for
-what the *secure* version of the same "let someone upload a file" problem
-looks like, side by side.
+`/api/images/upload` itself is not directly reachable by an outside
+attacker in this version of the lab -- see `vulnerable/upload/README.md`
+for the deliberate vulnerability (now reached via the catalog-sync front
+door instead), and `app/services/product_photos.py` for what the *secure*
+version of the same "let someone upload a file" problem looks like, side
+by side with `app/services/catalog_photos.py`'s weak one.
 
 ## Why keyword retrieval instead of embeddings
 

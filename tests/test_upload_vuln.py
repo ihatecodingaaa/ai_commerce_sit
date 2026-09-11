@@ -1,12 +1,16 @@
-"""Demonstrates the deliberate upload -> code execution vulnerability
-end to end, deterministically, using the real HTTP API and the real
-processing module (no mocking): a file named with a .py extension, but
-declared as Content-Type: image/jpeg (which is all the API validates),
-is executed by vulnerable/upload/image_processor.py.
+"""Demonstrates that vulnerable/upload/image_processor.py's dangerous
+behavior (importing and executing any `.py` file it's handed) is real,
+using the actual HTTP API and processing module in isolation (no
+mocking): a file named with a .py extension, but declared as
+Content-Type: image/jpeg (which is all this API validates), gets
+executed.
 
-This does not require Docker/Linux -- it runs the same Python code path the
-application uses, proving the vulnerability exists in the actual app
-architecture rather than being a simulated CTF flag.
+/api/images/upload itself is no longer directly attacker-reachable (its
+token is never disclosed -- see app/services/rotation.py); the `service_token`
+fixture here represents this app's own backend, the only caller that
+still holds it. tests/test_catalog_sync.py is what proves an outside
+attacker can still reach this same processing bug, through
+POST /api/catalog/products's own weak filename check instead.
 """
 import io
 import os

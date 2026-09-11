@@ -46,9 +46,9 @@ def test_customer_lookup_tool_cannot_target_other_customer(alice, bob):
 def test_ticket_search_excludes_internal_tickets(alice):
     # Customer-scoped ticket_search must never surface internal engineering
     # tickets, even when queried with terms that would match them.
-    result = ticket_search(user_id=alice["id"], query="support-image-service")
+    result = ticket_search(user_id=alice["id"], query="catalog-sync-service")
     refs = [t["ticket_ref"] for t in result["tickets"]]
-    assert "INC-10492" not in refs
+    assert "INC-10493" not in refs
     assert "INC-10480" not in refs
 
 

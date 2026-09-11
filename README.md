@@ -204,7 +204,7 @@ shop-lab/
 - The chatbot's conversation state is in-memory per process
   (`app/chatbot/agent.py`), not persisted — restarting the app clears
   active chat history (the database itself is unaffected).
-- The support-image-service token rotation job
+- The catalog-sync-service token rotation job
   (`app/services/rotation.py`) is a single background thread per process
   (`TOKEN_ROTATION_INTERVAL_SECONDS` in `.env`, default 30 min) — this
   lab runs on Flask's single-process dev server by design, so that's

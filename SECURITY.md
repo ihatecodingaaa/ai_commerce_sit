@@ -48,8 +48,8 @@ local privilege escalation to root. That means, by design, it contains:
 ## No real secrets, ever
 
 Every credential in this repository is a synthetic, fake, lab-only value:
-the support-image-service token (randomly generated at seed time and
-rotated automatically, never hardcoded -- see
+the catalog-sync-service and support-image-service tokens (randomly
+generated at seed time and never hardcoded -- see
 app/services/credentials.py), the seeded user passwords, and `SECRET_KEY`.
 If you fork or extend this lab:
 

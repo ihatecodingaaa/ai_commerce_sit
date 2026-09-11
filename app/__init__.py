@@ -42,6 +42,7 @@ def create_app() -> Flask:
     from app.routes.api_admin import bp as api_admin_bp
     from app.routes.api_admin_tickets import bp as api_admin_tickets_bp
     from app.routes.api_account import bp as api_account_bp
+    from app.routes.api_catalog import bp as api_catalog_bp
     from app.routes.health import bp as health_bp
 
     app.register_blueprint(pages_bp)
@@ -55,10 +56,16 @@ def create_app() -> Flask:
     app.register_blueprint(api_admin_bp)
     app.register_blueprint(api_admin_tickets_bp)
     app.register_blueprint(api_account_bp)
+    app.register_blueprint(api_catalog_bp)
     app.register_blueprint(health_bp)
 
-    from app.services.rotation import start_rotation_scheduler
+    from app.services.rotation import ensure_support_image_service_credential, start_rotation_scheduler
 
+    # support-image-service's credential is generated once per process (see
+    # rotation.py's module docstring) -- warm it here so
+    # app/services/image_client.py's in-process calls work immediately,
+    # the same way `python database/seed.py` (a different process) can't.
+    ensure_support_image_service_credential()
     start_rotation_scheduler(config.TOKEN_ROTATION_INTERVAL_SECONDS)
 
     return app

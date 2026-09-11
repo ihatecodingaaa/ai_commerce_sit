@@ -33,7 +33,7 @@ def test_admin_can_view_all_customer_tickets(client):
 def test_admin_tickets_view_excludes_internal_tickets(client):
     client.post("/login", data={"username": "admin", "password": "AdminLab123!"})
     resp = client.get("/admin/tickets")
-    assert b"INC-10492" not in resp.data
+    assert b"INC-10493" not in resp.data
     assert b"INC-10480" not in resp.data
 
 

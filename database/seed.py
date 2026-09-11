@@ -19,7 +19,12 @@ from app.config import config  # noqa: E402
 from app.auth import hash_password  # noqa: E402
 from app.rag.retrieval import index_content_as_kb  # noqa: E402
 from app.services.credentials import generate_and_store  # noqa: E402
-from app.services.rotation import SERVICE_NAME, render_incident_ticket_body  # noqa: E402
+from app.services.rotation import (  # noqa: E402
+    SERVICE_NAME,
+    SUPPORT_IMAGE_SERVICE_NAME,
+    TICKET_REF,
+    render_incident_ticket_body,
+)
 
 SCHEMA_PATH = BASE_DIR / "database" / "schema.sql"
 
@@ -140,32 +145,40 @@ def seed(conn: sqlite3.Connection):
     cur.execute(
         "INSERT INTO tickets (ticket_ref, user_id, owner_emp_id, subject, body, service, environment, status, visibility) "
         "VALUES ('INC-10480', NULL, ?, "
-        "'Image upload API trusts client Content-Type header', "
-        "'support-image-service validates uploads by checking the multipart Content-Type "
-        "header instead of sniffing file contents. Low severity, filed for tracking. "
-        "See INC-10492 for the related credential-rotation reminder.', "
-        "'support-image-service', 'production', 'open', 'internal')",
+        "'Catalog-sync product photo endpoint checks for \".jpg\" substring, not real type', "
+        "'The warehouse catalog-sync integration (POST /api/catalog/products) accepts a photo "
+        "if \".jpg\" appears anywhere in the filename, not that it is the real extension, and "
+        "never inspects file content. Low severity, filed for tracking -- the endpoint requires "
+        f"the catalog-sync-service token. See {TICKET_REF} for the related credential-rotation "
+        "reminder.', "
+        "'catalog-sync-service', 'production', 'open', 'internal')",
         (emp_ids["Priya Nair"],),
     )
     conn.commit()  # release the write lock before generate_and_store opens its own connection
 
-    # Generate a fresh, random support-image-service credential the same
-    # way the rotation job will later regenerate it -- only its hash is
-    # ever stored (app/services/credentials.py); this plaintext exists
-    # here only long enough to write it into the ticket body below, which
-    # is the lab's deliberate disclosure vector, not a property of the
-    # credential store itself.
+    # support-image-service's credential: generated once, hash-only in
+    # storage (app/services/credentials.py), never rotated on a timer and
+    # never pasted anywhere -- see app/services/rotation.py's module
+    # docstring for why. Nothing below ever touches its plaintext.
+    generate_and_store(SUPPORT_IMAGE_SERVICE_NAME)
+
+    # catalog-sync-service's credential: generated the same way the
+    # rotation job will later regenerate it -- only its hash is ever stored
+    # (app/services/credentials.py); this plaintext exists here only long
+    # enough to write it into the ticket body below, which is the lab's
+    # deliberate disclosure vector, not a property of the credential store
+    # itself.
     initial_token = generate_and_store(SERVICE_NAME)
-    inc_10492_body = render_incident_ticket_body(initial_token)
+    inc_ticket_body = render_incident_ticket_body(initial_token)
     cur.execute(
         "INSERT INTO tickets (ticket_ref, user_id, owner_emp_id, subject, body, service, environment, status, visibility) "
-        "VALUES ('INC-10492', NULL, ?, "
-        "'support-image-service token rotation reminder', ?, "
-        "'support-image-service', 'production', 'open', 'internal')",
-        (emp_ids["Alice Tan"], inc_10492_body),
+        "VALUES (?, NULL, ?, "
+        "'catalog-sync-service token rotation reminder', ?, "
+        "'catalog-sync-service', 'production', 'open', 'internal')",
+        (TICKET_REF, emp_ids["Priya Nair"], inc_ticket_body),
     )
     conn.commit()
-    inc_10492_id = cur.execute("SELECT id FROM tickets WHERE ticket_ref = 'INC-10492'").fetchone()[0]
+    inc_ticket_id = cur.execute("SELECT id FROM tickets WHERE ticket_ref = ?", (TICKET_REF,)).fetchone()[0]
 
     # ---- Knowledge base: public FAQ (visibility='public') -------------------
     public_kb = [
@@ -186,21 +199,29 @@ def seed(conn: sqlite3.Connection):
     internal_kb = [
         (
             "Internal: image management service overview",
-            "The support-image-service account is used by staff tooling to store ticket "
-            "screenshot attachments via the internal image API (POST /api/images/upload, "
-            "GET /api/images, GET /api/images/<id>). It authenticates with a single bearer "
-            "token sent as the X-Service-Token header. Scope is intentionally limited: it can "
-            "read ticket image metadata and upload images. It cannot escalate to an admin role "
-            "and has no access to other internal systems. See INC-10492 for the current token "
-            "and rotation schedule, and INC-10480 for a known upload-validation gap.",
+            "The support-image-service account backs the internal image API (POST "
+            "/api/images/upload, GET /api/images, GET /api/images/<id>), used by ticket "
+            "screenshots and by the catalog-sync product-photo forwarder. Its credential is "
+            "generated once per app process and never leaves the backend -- there is no "
+            "rotation ticket for it because it is never disclosed anywhere, including here.",
             "ticket",
             None,
         ),
         (
-            "Internal: INC-10492 support-image-service token rotation reminder",
-            inc_10492_body,
+            "Internal: catalog-sync-service overview",
+            "The catalog-sync-service account is used by the warehouse inventory system to push "
+            "new products directly (POST /api/catalog/products), authenticated with a single "
+            "bearer token sent as the X-Catalog-Sync-Token header. Scope is intentionally "
+            f"limited to product creation. See {TICKET_REF} for the current token and rotation "
+            "schedule, and INC-10480 for a known photo-validation gap.",
             "ticket",
-            inc_10492_id,
+            None,
+        ),
+        (
+            f"Internal: {TICKET_REF} catalog-sync-service token rotation reminder",
+            inc_ticket_body,
+            "ticket",
+            inc_ticket_id,
         ),
     ]
     for title, body, source, source_id in internal_kb:

@@ -26,7 +26,7 @@ CREATE TABLE users (
     -- server-defined library, not uploaded, so the account-editing feature
     -- never becomes a second file-upload surface. The only intentional
     -- file-upload vulnerability in this lab stays the one reachable via
-    -- the leaked support-image-service token.
+    -- the leaked catalog-sync-service token.
     avatar        TEXT NOT NULL DEFAULT 'letter',
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -96,7 +96,7 @@ CREATE TABLE reviews (
 -- deliberate flaw -- they are NOT excluded from knowledge_base_search.
 CREATE TABLE tickets (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    ticket_ref    TEXT UNIQUE NOT NULL,          -- e.g. 'INC-10492' or 'CUST-1003'
+    ticket_ref    TEXT UNIQUE NOT NULL,          -- e.g. 'INC-10493' or 'CUST-1003'
     user_id       INTEGER REFERENCES users(id),  -- NULL for internal tickets
     owner_emp_id  INTEGER REFERENCES employees(id),
     subject       TEXT NOT NULL,
@@ -147,15 +147,17 @@ CREATE TABLE images (
     created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Service credentials (e.g. support-image-service). Modeled the way a real
--- credential store works: only a salted hash of the current token is kept
--- here, never the plaintext. app/services/credentials.py verifies presented
--- tokens by hashing and comparing, and is the only code path that ever
--- holds the plaintext (briefly, in memory, at generation/rotation time).
--- app/services/rotation.py rotates this on a timer and -- this is the
--- lab's deliberate bad-practice simulation, not a flaw in this table --
--- also pastes the new plaintext into the INC-10492 ticket/KB article, which
--- is the actual disclosure vector tools/knowledge_base_search.py exploits.
+-- Service credentials (support-image-service, catalog-sync-service).
+-- Modeled the way a real credential store works: only a salted hash of the
+-- current token is kept here, never the plaintext. app/services/credentials.py
+-- verifies presented tokens by hashing and comparing, and is the only code
+-- path that ever holds the plaintext (briefly, in memory, at generation/
+-- rotation time). app/services/rotation.py rotates ONLY catalog-sync-service
+-- on a timer and -- this is the lab's deliberate bad-practice simulation,
+-- not a flaw in this table -- also pastes its new plaintext into the
+-- INC-10493 ticket/KB article, which is the actual disclosure vector
+-- tools/knowledge_base_search.py exploits. support-image-service's
+-- credential is generated once per app process and never disclosed.
 CREATE TABLE service_credentials (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     service_name  TEXT UNIQUE NOT NULL,

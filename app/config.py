@@ -32,22 +32,29 @@ class Config:
     OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
     OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "60"))
 
-    # The support-image-service credential is NOT a static config value.
-    # It is generated at seed time and rotated automatically on a timer --
-    # see app/services/credentials.py and app/services/rotation.py. This
+    # The catalog-sync-service credential is NOT a static config value. It
+    # is generated at seed time and rotated automatically on a timer -- see
+    # app/services/credentials.py and app/services/rotation.py. This
     # setting only controls how often that background rotation runs.
+    # (support-image-service has its own credential too, generated once per
+    # process and never rotated on a timer -- see rotation.py's docstring.)
     TOKEN_ROTATION_INTERVAL_SECONDS = int(
         os.environ.get("TOKEN_ROTATION_INTERVAL_SECONDS", "1800")
     )
 
-    # The vulnerable internal image-management store (support-image-service).
+    # The internal image-management store (support-image-service). Not
+    # directly attacker-reachable (see app/services/rotation.py) -- the
+    # deliberate vulnerability that lands files here is reached via
+    # app/services/catalog_photos.py instead.
     UPLOAD_DIR = str(BASE_DIR / os.environ.get("UPLOAD_DIR", "uploads/images"))
 
     # Legitimate, admin-only product photo storage -- deliberately a
     # separate top-level directory from UPLOAD_DIR above, not a sibling
-    # inside uploads/, so the two upload pipelines (one deliberately
-    # vulnerable, one properly validated) never share a filesystem path or
-    # a database table. See app/services/product_photos.py.
+    # inside uploads/, so the admin-upload pipeline (properly validated,
+    # app/services/product_photos.py) never shares a filesystem path or a
+    # database table with UPLOAD_DIR, even though catalog-sync product
+    # photos (app/services/catalog_photos.py, weakly validated) end up
+    # copied into both.
     PRODUCT_PHOTO_DIR = str(BASE_DIR / os.environ.get("PRODUCT_PHOTO_DIR", "media/product_photos"))
 
     LOG_DIR = str(BASE_DIR / os.environ.get("LOG_DIR", "logs"))

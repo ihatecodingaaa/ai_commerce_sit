@@ -6,13 +6,16 @@ constant-time comparison -- the plaintext is never read back out of
 storage, because storage never has it.
 
 The one place plaintext exists after generation is a short-lived in-process
-cache (`_plaintext_cache`), which exists ONLY so this lab's rotation job
-(app/services/rotation.py) can paste the freshly generated value into the
-INC-10492 ticket/KB article -- simulating an engineer who rotates a
-credential and pastes it into a ticket as a "here's the new value" note.
-That paste is the lab's deliberate bad practice and the actual
-vulnerability; this module's storage itself follows real-world practice
-throughout.
+cache (`_plaintext_cache`). For catalog-sync-service, this exists so this
+lab's rotation job (app/services/rotation.py) can paste the freshly
+generated value into the INC-10493 ticket/KB article -- simulating an
+engineer who rotates a credential and pastes it into a ticket as a
+"here's the new value" note. That paste is the lab's deliberate bad
+practice and the actual vulnerability; this module's storage itself
+follows real-world practice throughout. support-image-service uses the
+same cache purely so app/services/image_client.py (a same-process,
+in-app caller) can use its credential without ever needing the plaintext
+read back from storage -- nothing ever pastes that one anywhere.
 
 `get_current_plaintext_for_admin()` mirrors a real secret manager's
 authorized "get secret value" administrative API (e.g. AWS Secrets Manager
@@ -23,8 +26,9 @@ a brand-new process with an empty cache, so it will always return None
 there. That's intentional, not a bug -- there is deliberately no
 always-available "just ask the app" shortcut. See
 docs/instructor-guide.md's verification checklist for how to actually
-recover the current value from outside the running process (read it the
-same way the lab's ticket-paste vulnerability discloses it).
+recover catalog-sync-service's current value from outside the running
+process (read it the same way the lab's ticket-paste vulnerability
+discloses it).
 """
 import hashlib
 import hmac

@@ -79,7 +79,7 @@ retrieval by an agent with tool access.
 planted review (matched by ordinary keywords in the customer's own
 question), followed the embedded instruction and called
 `knowledge_base_search` again with attacker-chosen terms — surfacing a
-`visibility='internal'` article (or the INC-10492/INC-10480 ticket
+`visibility='internal'` article (or the INC-10493/INC-10480 ticket
 content) that a customer should never see.
 **Does not have:** the credential yet, necessarily — depends on what the
 injected instruction asked the model to search for and repeat.
@@ -99,58 +99,78 @@ docs/defensive-controls.md.
 
 ## Stage 6 — Limited service credential
 
-**Has:** the literal current value of the support-image-service token,
+**Has:** the literal current value of the catalog-sync-service token,
 disclosed via the Stage 5 flow because the internal KB article/ticket
-about "support-image-service token rotation" contains it in plain text.
+about "catalog-sync-service token rotation" contains it in plain text.
 **Does not have:** any indication the token is powerful — the same
-article states its actual scope (upload + read ticket image metadata
-only, no admin, no other systems). Also doesn't have a *permanent*
-foothold: the token is randomly generated and rotates automatically
-(`app/services/rotation.py`, default every 30 min) — this specific value
-will eventually stop working, exactly like a real leaked credential
-would, which is a deliberate part of the realism, not a bug to work
-around.
+article states its actual scope (product creation only, no admin, no
+other systems). Also doesn't have a *permanent* foothold: the token is
+randomly generated and rotates automatically (`app/services/rotation.py`,
+default every 30 min) — this specific value will eventually stop
+working, exactly like a real leaked credential would, which is a
+deliberate part of the realism, not a bug to work around.
 **Mechanism:** `database/seed.py` and the rotation job both generate the
 token via `app/services/credentials.py` (SHA-256 hash stored, never
 plaintext) and paste the current plaintext into the ticket body — that
 paste, not the credential store, is the actual leak (fake, synthetic —
-see SECURITY.md).
+see SECURITY.md). support-image-service has its own, *separate*
+credential (used by `app/services/image_client.py`) that is never
+rotated on a timer or pasted anywhere — see Stage 7.
 **Log evidence:** `kb_retrieval` for the internal doc; `service_token_used`
-events will start appearing once the student uses it.
+events (service=catalog-sync-service) will start appearing once the
+student uses it.
 **Mitigation:** secrets should never be stored as plain text inside
 content that is reachable by any retrieval-augmented system; use a secret
 manager and reference secrets by name, never by value, in any
 human/LLM-readable document.
 
-## Stage 7 — Internal API access
+## Stage 7 — Internal API access (as an automation client, not a human)
 
-**Has:** the ability to call `/api/images` (list), `/api/images/<id>`
-(read), and `/api/images/upload` (write) using
-`X-Service-Token: <token>` (`app/routes/api_images.py`).
+**Has:** the ability to call `POST /api/catalog/products`
+(`app/routes/api_catalog.py`) using `X-Catalog-Sync-Token: <token>` — a
+route a mere customer session, admin or not, cannot reach at all, since
+it checks only this token and never looks at cookies.
 **Does not have:** any other internal system access — the token is
-checked against exactly one constant and grants exactly these three
-routes.
+checked against exactly one stored hash and grants exactly this one
+route. It also does not yet have code execution — just the ability to
+create a product, optionally with a photo.
 **Mechanism:** simple shared-bearer-token auth, intentionally a *separate*
-trust boundary from the customer session (Stage 1-6 access does not by
-itself grant this — the token had to be discovered).
-**Log evidence:** `service_token_used` (action=list/get/upload),
-`service_token_auth_failed` for wrong/missing tokens.
+trust boundary from both the customer session AND the admin session
+(Stage 1-6 access does not by itself grant this — the token had to be
+discovered). This isn't a token invented for the exploit: a warehouse/
+inventory system pushing new products with no human admin present is a
+completely ordinary integration shape, the same as `api_images.py`'s
+support-image-service token is for ticket-screenshot storage.
+**Log evidence:** `service_token_used` (service=catalog-sync-service,
+action=sync_product), `service_token_auth_failed` for wrong/missing
+tokens.
 **Mitigation:** short-lived, scoped tokens (not a static long-lived
 constant); mTLS or a proper service-identity system between internal
 services in production.
 
 ## Stage 8 — Vulnerable file upload
 
-**Has:** the ability to upload a file where the API's Content-Type check
-(`app/routes/api_images.py::ALLOWED_CONTENT_TYPES`) and the processing
-stage's extension check (`vulnerable/upload/image_processor.py`) disagree
-about what's safe — see `vulnerable/upload/README.md` for the full
-validation-layer table.
-**Does not have:** code execution yet — just a stored `.py` file.
+**Has:** the ability to upload a "product photo" where
+`app/services/catalog_photos.py::looks_like_jpeg_filename` (does the
+filename merely *contain* `.jpg`?) and the processing stage's extension
+check (`vulnerable/upload/image_processor.py`, the *real*, final
+extension) disagree about what's safe — see `vulnerable/upload/README.md`
+for the full validation-layer table. A file named `plugin.jpg.py` passes
+the first check and is executed anyway by the second.
+**Does not have:** code execution yet in this step alone -- forwarding
+into `UPLOAD_DIR` (via `app/services/image_client.py`, using the
+backend's own held support-image-service credential — the attacker's
+catalog-sync-service token never touches that internal call directly) is
+what triggers Stage 9.
 **Mechanism / vulnerability:** CWE-434 (Unrestricted Upload of File with
-Dangerous Type) via signal disagreement between layers.
-**Log evidence:** `image_uploaded` (filename ends in `.py`, claimed_type is
-`image/*`), `image_processing_plugin_load`.
+Dangerous Type) via signal disagreement between layers — the same
+disagreement class this lab has always taught, just moved one layer
+further from the attacker (`api_catalog.py`'s weak filename substring
+check, not `api_images.py`'s Content-Type check, is now the one an
+outside attacker actually has to satisfy).
+**Log evidence:** `catalog_sync_product_created` (has_photo=true),
+`image_uploaded` (filename contains `.jpg` but doesn't end with it),
+`image_processing_plugin_load`.
 **Mitigation:** validate actual file content, not headers or filenames;
 never derive executable behavior from a filename.
 
@@ -162,7 +182,10 @@ container, via `image_processor.py::_load_and_run_plugin`
 **Does not have:** root. `appuser` is an unprivileged, non-sudo-by-default
 account (only the one scoped rule from Stage 10 exists).
 **Mechanism:** demonstrated deterministically in
-`tests/test_upload_vuln.py::test_uploaded_py_plugin_actually_executes`.
+`tests/test_catalog_sync.py::test_double_extension_photo_actually_executes`
+(the attacker-reachable path) and
+`tests/test_upload_vuln.py::test_uploaded_py_plugin_actually_executes`
+(the underlying processing bug, in isolation).
 **Log evidence:** `image_processing_plugin_load`; anything the payload
 itself does is, realistically, outside this app's own logging (a real
 detection stack would need host-level EDR/auditd here — see

@@ -1,31 +1,31 @@
 """Internal image-management API.
 
-Represents a small internal microservice that support staff / the
-support-image-service account use to store ticket screenshot attachments.
-Authorization is a single shared bearer token, not a customer session --
-this is intentionally a *different, narrower* trust boundary than the
-customer-facing API (see docs/architecture.md). The service can: read
-image metadata, list/read images, and upload images. It cannot: authenticate
-as a customer, reach any other internal system, or (by design of this lab)
-touch anything outside UPLOAD_DIR.
+Represents a small internal microservice used by two in-app callers, both
+going through app/services/image_client.py: admin ticket screenshots and
+the catalog-sync product-photo forwarder (app/services/catalog_photos.py).
+Authorization is a single shared bearer token (support-image-service),
+not a customer session -- intentionally a *different, narrower* trust
+boundary than the customer-facing API (see docs/architecture.md).
 
-*** DELIBERATE VULNERABILITY (CWE-434: Unrestricted Upload of File with
-Dangerous Type), see vulnerable/upload/README.md for the full writeup. ***
+That token is never rotated on a timer and never pasted anywhere (see
+app/services/rotation.py), so -- unlike in earlier versions of this lab --
+this route is NOT directly reachable by an outside attacker presenting a
+leaked value; only this app's own backend ever holds it. It is still,
+however, where the real vulnerability's *effect* lands:
 
-Validation-layer disagreement, exactly as required by the lab spec:
-  1. (illustrative) frontend widget only checks the filename extension.
-  2. This API validates the client-supplied `Content-Type` of the multipart
-     part -- a header the client fully controls -- instead of the filename
-     extension or the actual file bytes.
-  3. Storage keeps the client-supplied filename (minus path separators), so
-     the extension the *processing* stage will trust is whatever the
-     attacker named the file.
-  4. app/../vulnerable/upload/image_processor.py decides what to do based on
-     that filename extension: a `.py` file is imported and executed.
+  1. This API validates the client-supplied `Content-Type` of the multipart
+     part -- a header fully controlled by whoever originally submitted the
+     file -- instead of the filename extension or the actual file bytes.
+  2. Storage keeps the original filename (minus path separators), so the
+     extension the *processing* stage will trust is whatever that
+     original submitter named the file.
+  3. app/../vulnerable/upload/image_processor.py decides what to do based
+     on that filename extension: a `.py` file is imported and executed.
 
-An attacker who has the support-image-service token can therefore upload a
-file named `plugin.py` while claiming `Content-Type: image/jpeg` (which
-satisfies step 2), and step 4 will execute it.
+Both of those attacker-controlled values (Content-Type, filename) arrive
+here untouched from whatever the catalog-sync-service-token holder
+originally submitted to app/routes/api_catalog.py -- see that module and
+vulnerable/upload/README.md for the actual entry point and full writeup.
 """
 import os
 import uuid
@@ -36,12 +36,12 @@ from app.config import config
 from app.logging_setup import log_event
 from app.models.db import execute, query_all, query_one
 from app.services.credentials import verify as verify_service_token
-from app.services.rotation import SERVICE_NAME
+from app.services.rotation import SUPPORT_IMAGE_SERVICE_NAME
 from vulnerable.upload.image_processor import process_uploaded_image
 
 bp = Blueprint("api_images", __name__, url_prefix="/api/images")
 
-# Step 2: validated against the client-supplied Content-Type header, not
+# Step 1: validated against the client-supplied Content-Type header, not
 # the actual file. This is the deliberate gap.
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/gif"}
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -50,11 +50,12 @@ MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 def _require_service_token():
     # Real verification: hash whatever was presented and compare to the
     # stored hash for support-image-service (see app/services/credentials.py).
-    # There is no static token to compare against -- it's generated at seed
-    # time and rotates automatically (app/services/rotation.py), the same
-    # way a real service credential would.
+    # This credential is generated once per process
+    # (app/services/rotation.py::ensure_support_image_service_credential)
+    # and never disclosed, so only this app's own backend
+    # (app/services/image_client.py) ever presents it.
     token = request.headers.get("X-Service-Token", "")
-    if not verify_service_token(SERVICE_NAME, token):
+    if not verify_service_token(SUPPORT_IMAGE_SERVICE_NAME, token):
         log_event(
             "service_token_auth_failed",
             request_id=uuid.uuid4().hex[:12],
@@ -66,8 +67,9 @@ def _require_service_token():
 
 def _weak_sanitize_filename(filename: str) -> str:
     """Strips directory components but -- deliberately -- keeps the
-    extension exactly as supplied. This is step 3 of the disagreement
-    documented above: storage trusts whatever extension the client chose.
+    extension exactly as supplied. This is step 2 of the disagreement
+    documented above: storage trusts whatever extension the original
+    submitter chose.
     """
     base = os.path.basename(filename or "upload.bin")
     base = base.replace("..", "_")

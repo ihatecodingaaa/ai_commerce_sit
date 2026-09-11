@@ -53,8 +53,8 @@ and that single gap is the entire root cause of Stages 4-7.
 
 ## 4. Least-privilege service accounts
 
-- `support-image-service`'s token grants exactly three routes and nothing
-  else (`app/routes/api_images.py`). That scoping is correct as far as it
+- `catalog-sync-service`'s token grants exactly one route and nothing else
+  (`app/routes/api_catalog.py`). That scoping is correct as far as it
   goes; the remaining fix is to make tokens short-lived and individually
   revocable rather than a single static constant, and to scope them
   per-caller so a leak doesn't grant blanket access to everyone who might
@@ -65,7 +65,7 @@ and that single gap is the entire root cause of Stages 4-7.
 - Stage 6's leak happens because a real secret value was pasted into a
   human/LLM-readable document (a ticket). In a hardened deployment, that
   document would reference the secret by name only (e.g. "see the
-  `support-image-service` entry in the secret manager"), and the actual
+  `catalog-sync-service` entry in the secret manager"), and the actual
   value would live in a secret store the chatbot's tools have no read
   access to at all.
 
@@ -131,12 +131,12 @@ and that single gap is the entire root cause of Stages 4-7.
 
 ## 13. Credential rotation
 
-- The support-image-service token *does* rotate automatically in this lab
+- The catalog-sync-service token *does* rotate automatically in this lab
   (`app/services/rotation.py`, default every 30 minutes,
   `TOKEN_ROTATION_INTERVAL_SECONDS`) — a token a student captures will
   eventually stop working, same as a real leaked credential would if
   rotation were working as intended. What doesn't get fixed by rotation
-  alone: every rotation still pastes the new plaintext into the INC-10492
+  alone: every rotation still pastes the new plaintext into the INC-10493
   ticket, because the actual defect is *where the secret lives* (a
   human/LLM-readable document), not *how often it changes*. This is
   deliberate and is the whole lesson of Stage 6 — see "Secret isolation"
