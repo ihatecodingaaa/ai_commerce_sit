@@ -24,7 +24,7 @@
 {% if tickets %}
 <ul class="ticket-list stagger">
   {% for t in tickets %}
-  <li class="card ticket-card" data-ticket-id="{{ t.id }}">
+  <li class="card ticket-card">
     <div class="ticket-card-head">
       <div>
         <strong>{{ t.subject }}</strong>
@@ -39,17 +39,6 @@
       <p style="margin:0.3rem 0 0;">{{ t.admin_reply }}</p>
     </div>
     {% endif %}
-
-    <div class="ticket-screenshot-row" style="margin-top:0.75rem;">
-      <label>Attach a photo (e.g. what the issue looks like)</label>
-      {% if t.customer_screenshot_image_id %}
-      <div style="margin:0.3rem 0;">
-        <img src="/api/tickets/{{ t.id }}/screenshot" alt="Your attached photo" style="max-width:220px; border-radius:var(--radius-sm); border:1px solid var(--border);">
-      </div>
-      {% endif %}
-      <input type="file" class="ticket-screenshot-input" accept="image/*" style="font-size:0.85rem;">
-      <button type="button" class="btn btn-secondary btn-sm upload-ticket-screenshot" style="margin-top:0.4rem;">Upload photo</button>
-    </div>
   </li>
   {% endfor %}
 </ul>
@@ -82,38 +71,6 @@ document.getElementById('ticket-form')?.addEventListener('submit', async (e) => 
     showToast('Network error submitting ticket.', 'error');
     btn.disabled = false;
   }
-});
-
-document.querySelectorAll('.upload-ticket-screenshot').forEach((btn) => {
-  btn.addEventListener('click', async () => {
-    const card = btn.closest('.ticket-card');
-    const ticketId = card.dataset.ticketId;
-    const input = card.querySelector('.ticket-screenshot-input');
-    const file = input.files[0];
-    if (!file) {
-      showToast('Choose an image file first.', 'error');
-      return;
-    }
-    const formData = new FormData();
-    formData.append('file', file);
-    btn.disabled = true;
-    try {
-      const res = await fetch(`/api/tickets/${ticketId}/screenshot`, {
-        method: 'POST',
-        body: formData,
-      });
-      if (res.ok) {
-        showToast('Photo attached.', 'success');
-        location.reload();
-      } else {
-        showToast('Error uploading photo.', 'error');
-      }
-    } catch (err) {
-      showToast('Network error uploading photo.', 'error');
-    } finally {
-      btn.disabled = false;
-    }
-  });
 });
 </script>
 {% endblock %}

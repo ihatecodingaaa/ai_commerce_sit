@@ -1,20 +1,14 @@
 """Server-side client for the internal image-management microservice
-(app/routes/api_images.py), used by any in-app feature that needs to store
-or read an image through that service -- currently two: admin-facing
-ticket screenshots (app/routes/api_admin_tickets.py) and customer-facing
-ticket photos (app/routes/api_support.py).
+(app/routes/api_images.py), used by admin-facing features that need to
+store or read an image through that service -- currently just admin
+ticket screenshots (app/routes/api_admin_tickets.py).
 
-This is the legitimate way something inside our own backend is meant to
-reach support-image-service: hold the current credential in-process (via
+Holds the current credential in-process (via
 app/services/credentials.py::get_current_plaintext_for_admin -- the
 "trusted server-side code running in the same process" accessor its
-docstring describes) and issue a real request to the service with it, the
-same way a real backend would hold a service API key in its own config/
-secret store rather than ship it to a browser. The browser never sees the
-token either way; it only ever talks to the session-gated routes in
-app/routes/api_admin_tickets.py or app/routes/api_support.py, each of
-which enforces its own authorization (admin role, or ticket ownership)
-before ever calling into this module.
+docstring describes) and issues a real request to the service with it,
+the same way a real backend would hold a service API key in its own
+config/secret store rather than ship it to a browser.
 
 Dispatched via current_app.test_client() rather than a real outbound
 socket call to our own port: it still goes through the exact same Flask
@@ -24,10 +18,11 @@ genuine HTTP request would, just without depending on an actual open
 listener -- which matters here since this module is exercised the same
 way under the test suite as it is in the running container.
 
-Nothing here changes what makes /api/images/upload vulnerable -- the
-token itself still doesn't distinguish "this app's own backend" from
-"anyone who has the value", which is exactly why leaking it (see
-docs/attack-timeline.md Stage 6) grants the same access this module has.
+Not connected to the lab's vulnerability chain -- see
+docs/attack-timeline.md Stage 6-9 for how that token actually gets used
+maliciously (via a leaked value presented directly to
+/api/images/upload, independent of this module or the admin feature it
+supports).
 """
 from flask import current_app
 

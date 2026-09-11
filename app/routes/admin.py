@@ -40,7 +40,7 @@ def tickets():
     """
     rows = query_all(
         "SELECT t.id, t.ticket_ref, t.subject, t.body, t.status, t.admin_reply, "
-        "t.screenshot_image_id, t.customer_screenshot_image_id, t.created_at, "
+        "t.screenshot_image_id, t.created_at, "
         "u.username, u.full_name FROM tickets t JOIN users u ON u.id = t.user_id "
         "WHERE t.visibility = 'customer' ORDER BY t.created_at DESC"
     )

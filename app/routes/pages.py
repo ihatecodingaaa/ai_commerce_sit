@@ -86,8 +86,7 @@ def support_tickets():
     if not user:
         return redirect(url_for("auth.login"))
     tickets = query_all(
-        "SELECT id, ticket_ref, subject, body, status, admin_reply, "
-        "customer_screenshot_image_id, created_at FROM tickets "
+        "SELECT ticket_ref, subject, body, status, admin_reply, created_at FROM tickets "
         "WHERE user_id = ? AND visibility = 'customer' ORDER BY created_at DESC",
         (user["id"],),
     )

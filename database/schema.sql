@@ -111,21 +111,10 @@ CREATE TABLE tickets (
     -- Optional screenshot an admin attached while working the ticket
     -- (e.g. "here's what I see on my end"). Set via POST
     -- /api/admin/tickets/<id>/screenshot, which stores the file through
-    -- the internal image-management service (app/services/image_client.py)
-    -- -- this is the legitimate, admin-only path into the same
-    -- support-image-service upload pipeline that /api/images/upload
-    -- exposes directly to anyone holding the service token.
+    -- the internal image-management service (app/services/image_client.py).
+    -- Ordinary admin functionality, not part of the lab's vulnerability
+    -- chain -- see docs/attack-timeline.md Stage 6-9 for that.
     screenshot_image_id INTEGER REFERENCES images(id),
-    -- Optional photo the CUSTOMER attached to their own ticket (e.g. "here's
-    -- what the defect looks like"). Set via POST
-    -- /api/tickets/<id>/screenshot (app/routes/api_support.py), ownership-
-    -- checked the same way ticket_search.py scopes reads (user_id = ? AND
-    -- visibility = 'customer'). Stored through the exact same
-    -- support-image-service pipeline as the admin's screenshot above --
-    -- two independent, legitimate business reasons the internal image
-    -- service and its token exist, both equally impersonated by anyone who
-    -- obtains the token directly.
-    customer_screenshot_image_id INTEGER REFERENCES images(id),
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

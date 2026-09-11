@@ -591,6 +591,11 @@ form { margin: 0; }
 
 .review-edit-form { margin-top: 0.5rem; animation: popIn var(--fast) var(--ease) both; }
 .review-edit-form textarea { margin-top: 0.4rem; }
+/* The ticket "Details" box sits in a fixed-width card next to other
+   fields; letting a visitor drag it (the browser default on every
+   textarea) breaks that layout, so it's the one textarea pinned to a
+   fixed size instead of the shared resize behavior. */
+#ticket-body { resize: none; }
 .row-edit-form { animation: popIn var(--fast) var(--ease) both; padding-top: 0.6rem; padding-bottom: 0.6rem; }
 .row-edit-form textarea { margin-top: 0.4rem; }
 
