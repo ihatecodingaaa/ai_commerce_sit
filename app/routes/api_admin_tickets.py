@@ -4,7 +4,10 @@ management -- a customer session, no matter whose, never reaches this.
 Screenshot attachments (POST/GET .../screenshot) are the legitimate,
 admin-only entry point into the support-image-service upload pipeline --
 see app/services/image_client.py for how this backend calls that internal
-service on the admin's behalf.
+service on the admin's behalf. GET .../customer-screenshot is the
+read-only counterpart for viewing what a customer attached to their own
+ticket via app/routes/api_support.py -- two independent, legitimate
+features sharing the same internal image service and token.
 """
 import uuid
 
@@ -97,6 +100,28 @@ def get_ticket_screenshot(ticket_id):
         return jsonify({"error": "no screenshot for this ticket"}), 404
 
     result = fetch_screenshot(ticket["screenshot_image_id"])
+    if result is None:
+        return jsonify({"error": "screenshot service unavailable"}), 502
+
+    data, content_type = result
+    return Response(data, mimetype=content_type)
+
+
+@bp.route("/<int:ticket_id>/customer-screenshot", methods=["GET"])
+@require_admin
+def get_customer_ticket_screenshot(ticket_id):
+    """Read-only: lets an admin see the photo a customer attached to their
+    own ticket (app/routes/api_support.py::upload_own_ticket_screenshot).
+    No ownership check needed here -- an admin, unlike a customer, is
+    allowed to view any customer-visibility ticket."""
+    ticket = query_one(
+        "SELECT customer_screenshot_image_id FROM tickets WHERE id = ? AND visibility = 'customer'",
+        (ticket_id,),
+    )
+    if not ticket or not ticket["customer_screenshot_image_id"]:
+        return jsonify({"error": "no screenshot for this ticket"}), 404
+
+    result = fetch_screenshot(ticket["customer_screenshot_image_id"])
     if result is None:
         return jsonify({"error": "screenshot service unavailable"}), 502
 

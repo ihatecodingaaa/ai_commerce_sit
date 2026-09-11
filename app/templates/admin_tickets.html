@@ -22,6 +22,12 @@
       <span class="badge badge-{{ t.status }}" id="status-badge-{{ t.id }}">{{ t.status.replace('_', ' ') }}</span>
     </div>
     <p style="margin:0.6rem 0;">{{ t.body }}</p>
+    {% if t.customer_screenshot_image_id %}
+    <div style="margin:0 0 0.6rem;">
+      <label class="muted" style="font-size:0.78rem; display:block; margin-bottom:0.25rem;">Photo the customer attached</label>
+      <img src="/api/admin/tickets/{{ t.id }}/customer-screenshot" alt="Customer-attached photo" style="max-width:220px; border-radius:var(--radius-sm); border:1px solid var(--border);">
+    </div>
+    {% endif %}
 
     <div class="field-row" style="align-items:flex-end;">
       <div style="flex:1; min-width:160px;">

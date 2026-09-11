@@ -116,6 +116,16 @@ CREATE TABLE tickets (
     -- support-image-service upload pipeline that /api/images/upload
     -- exposes directly to anyone holding the service token.
     screenshot_image_id INTEGER REFERENCES images(id),
+    -- Optional photo the CUSTOMER attached to their own ticket (e.g. "here's
+    -- what the defect looks like"). Set via POST
+    -- /api/tickets/<id>/screenshot (app/routes/api_support.py), ownership-
+    -- checked the same way ticket_search.py scopes reads (user_id = ? AND
+    -- visibility = 'customer'). Stored through the exact same
+    -- support-image-service pipeline as the admin's screenshot above --
+    -- two independent, legitimate business reasons the internal image
+    -- service and its token exist, both equally impersonated by anyone who
+    -- obtains the token directly.
+    customer_screenshot_image_id INTEGER REFERENCES images(id),
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
