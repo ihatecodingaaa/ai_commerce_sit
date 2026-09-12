@@ -76,11 +76,11 @@ def search_articles(query: str, visibility_filter: str | None = "public", limit:
 
     if visibility_filter:
         rows = query_all(
-            "SELECT id, title, body, visibility FROM kb_articles WHERE visibility = ?",
+            "SELECT id, title, body, visibility, source FROM kb_articles WHERE visibility = ?",
             (visibility_filter,),
         )
     else:
-        rows = query_all("SELECT id, title, body, visibility FROM kb_articles")
+        rows = query_all("SELECT id, title, body, visibility, source FROM kb_articles")
 
     scored = []
     for row in rows:

@@ -32,7 +32,27 @@ def _allowed_arg_keys(tool_name: str) -> set:
     return set()
 
 
-def _dispatch_tool(tool_name: str, raw_args, user: dict, request_id: str):
+def _history_has_untrusted_kb_hit(history: list[dict]) -> bool:
+    """True once this conversation has already ingested a
+    knowledge_base_search result sourced from untrusted, customer-submitted
+    content (a review) -- see app/tools/knowledge_base_search.py for why
+    this is what actually gates internal-visibility disclosure. Checked
+    fresh on every tool call, never cached, so it reflects exactly what's
+    in `history` so far, not what the model claims.
+    """
+    for msg in history:
+        if msg.get("role") != "tool" or msg.get("name") != "knowledge_base_search":
+            continue
+        try:
+            payload = json.loads(msg.get("content") or "{}")
+        except json.JSONDecodeError:
+            continue
+        if any(item.get("source") == "review" for item in payload.get("results", [])):
+            return True
+    return False
+
+
+def _dispatch_tool(tool_name: str, raw_args, user: dict, request_id: str, history: list[dict]):
     if isinstance(raw_args, str):
         try:
             raw_args = json.loads(raw_args) if raw_args else {}
@@ -54,8 +74,14 @@ def _dispatch_tool(tool_name: str, raw_args, user: dict, request_id: str):
         clean_args.pop("user_id", None)
         clean_args.pop("customer_id", None)
         result = func(user_id=user["id"], **clean_args)
+    elif tool_name == "knowledge_base_search":
+        # No per-customer scoping concept (deliberate -- see module
+        # docstring), but internal-visibility access is still decided here,
+        # server-side, from conversation provenance -- never by the model
+        # or by anything it was asked to search for.
+        clean_args.pop("allow_internal", None)
+        result = func(allow_internal=_history_has_untrusted_kb_hit(history), **clean_args)
     else:
-        # knowledge_base_search: no scoping applied. Deliberate. See module docstring.
         result = func(**clean_args)
 
     log_event(
@@ -109,7 +135,7 @@ def handle_chat_message(user: dict, user_message: str, request_id: str) -> str:
             fn = call.get("function", {})
             tool_name = fn.get("name", "")
             tool_args = fn.get("arguments", {})
-            result = _dispatch_tool(tool_name, tool_args, user, request_id)
+            result = _dispatch_tool(tool_name, tool_args, user, request_id, history)
 
             result_text = json.dumps(result)
             hits = detect_suspicious_text(result_text)
