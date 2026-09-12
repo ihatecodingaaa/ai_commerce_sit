@@ -24,7 +24,7 @@
 {% if tickets %}
 <ul class="ticket-list stagger">
   {% for t in tickets %}
-  <li class="card ticket-card">
+  <li class="card ticket-card" data-ticket-id="{{ t.id }}">
     <div class="ticket-card-head">
       <div>
         <strong>{{ t.subject }}</strong>
@@ -39,6 +39,19 @@
       <p style="margin:0.3rem 0 0;">{{ t.admin_reply }}</p>
     </div>
     {% endif %}
+
+    <div class="ticket-photo-row" style="margin-top:0.75rem;">
+      {% if t.customer_photo_path %}
+      <label>Your attached photo</label>
+      <div style="margin:0.3rem 0;">
+        <img src="/api/tickets/{{ t.id }}/photo" alt="Your ticket attachment" style="max-width:220px; border-radius:var(--radius-sm); border:1px solid var(--border);">
+      </div>
+      {% else %}
+      <label>Attach a photo (optional)</label>
+      <input type="file" class="ticket-photo-input" accept="image/jpeg,image/png,image/gif,image/webp" style="font-size:0.85rem;">
+      <button type="button" class="btn btn-secondary btn-sm upload-ticket-photo" style="margin-top:0.4rem;">Attach photo</button>
+      {% endif %}
+    </div>
   </li>
   {% endfor %}
 </ul>
@@ -71,6 +84,39 @@ document.getElementById('ticket-form')?.addEventListener('submit', async (e) => 
     showToast('Network error submitting ticket.', 'error');
     btn.disabled = false;
   }
+});
+
+document.querySelectorAll('.upload-ticket-photo').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const card = btn.closest('.ticket-card');
+    const ticketId = card.dataset.ticketId;
+    const input = card.querySelector('.ticket-photo-input');
+    const file = input.files[0];
+    if (!file) {
+      showToast('Choose an image file first.', 'error');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}/photo`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        showToast('Photo attached.', 'success');
+        location.reload();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Error uploading photo.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error uploading photo.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
 });
 </script>
 {% endblock %}

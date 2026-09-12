@@ -24,26 +24,7 @@ import os
 import uuid
 
 from app.config import config
-
-MAX_PHOTO_BYTES = 5 * 1024 * 1024
-
-# (magic bytes, extension) -- checked in order; WebP needs a second check
-# at offset 8 since RIFF is a shared container signature.
-_SIGNATURES = (
-    (b"\xff\xd8\xff", "jpg"),
-    (b"\x89PNG\r\n\x1a\n", "png"),
-    (b"GIF87a", "gif"),
-    (b"GIF89a", "gif"),
-)
-
-
-def _sniff_extension(data: bytes) -> str | None:
-    for magic, ext in _SIGNATURES:
-        if data.startswith(magic):
-            return ext
-    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-        return "webp"
-    return None
+from app.services.image_validation import MAX_IMAGE_BYTES, sniff_extension
 
 
 def save_product_photo(file_storage) -> str:
@@ -52,13 +33,13 @@ def save_product_photo(file_storage) -> str:
     user-facing message if the upload is empty, too large, or not a real
     image by content.
     """
-    data = file_storage.read(MAX_PHOTO_BYTES + 1)
+    data = file_storage.read(MAX_IMAGE_BYTES + 1)
     if not data:
         raise ValueError("uploaded file is empty")
-    if len(data) > MAX_PHOTO_BYTES:
+    if len(data) > MAX_IMAGE_BYTES:
         raise ValueError("photo is too large (5MB max)")
 
-    ext = _sniff_extension(data)
+    ext = sniff_extension(data)
     if ext is None:
         raise ValueError("unsupported image format (only JPEG, PNG, GIF, or WebP are accepted)")
 

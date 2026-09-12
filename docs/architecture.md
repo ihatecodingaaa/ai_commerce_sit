@@ -121,6 +121,17 @@ door instead), and `app/services/product_photos.py` for what the *secure*
 version of the same "let someone upload a file" problem looks like, side
 by side with `app/services/catalog_photos.py`'s weak one.
 
+A third path exists now too: customer ticket-photo attachments (`POST/GET
+/api/tickets/<id>/photo`, `app/routes/api_support.py`, backed by
+`app/services/ticket_photos.py`). It follows the `product_photos.py`
+pattern exactly (magic-byte sniffing, random filename, its own
+`TICKET_PHOTO_DIR`) and, like admin product photos, never touches
+`api_images.py`/`image_processor.py` at all -- that internal API's own
+processing step has no safe caller (see `api_images.py`'s docstring: even
+the admin ticket-screenshot path forwards a file with zero content
+validation of its own), so nothing customer-reachable should ever be
+routed through it.
+
 ## Why keyword retrieval instead of embeddings
 
 A 2 vCPU / 4 GiB EC2 instance already has to run Ollama (CPU inference) plus

@@ -86,8 +86,8 @@ def support_tickets():
     if not user:
         return redirect(url_for("auth.login"))
     tickets = query_all(
-        "SELECT ticket_ref, subject, body, status, admin_reply, created_at FROM tickets "
-        "WHERE user_id = ? AND visibility = 'customer' ORDER BY created_at DESC",
+        "SELECT id, ticket_ref, subject, body, status, admin_reply, customer_photo_path, created_at "
+        "FROM tickets WHERE user_id = ? AND visibility = 'customer' ORDER BY created_at DESC",
         (user["id"],),
     )
     return render_template("support_tickets.html", user=user, tickets=tickets)

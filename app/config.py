@@ -55,6 +55,11 @@ class Config:
     # copied into both.
     PRODUCT_PHOTO_DIR = str(BASE_DIR / os.environ.get("PRODUCT_PHOTO_DIR", "media/product_photos"))
 
+    # Customer ticket-photo attachments (app/services/ticket_photos.py) --
+    # same secure, sniff-then-store pattern as PRODUCT_PHOTO_DIR above, its
+    # own separate directory for the same reason.
+    TICKET_PHOTO_DIR = str(BASE_DIR / os.environ.get("TICKET_PHOTO_DIR", "media/ticket_photos"))
+
     LOG_DIR = str(BASE_DIR / os.environ.get("LOG_DIR", "logs"))
 
 

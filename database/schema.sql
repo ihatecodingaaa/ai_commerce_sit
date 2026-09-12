@@ -115,6 +115,13 @@ CREATE TABLE tickets (
     -- Ordinary admin functionality, not part of the lab's vulnerability
     -- chain -- see docs/attack-timeline.md Stage 6-9 for that.
     screenshot_image_id INTEGER REFERENCES images(id),
+    -- Optional photo a customer attaches to their own ticket. Set via
+    -- POST /api/tickets/<id>/photo (app/routes/api_support.py), validated
+    -- and stored by app/services/ticket_photos.py -- real content
+    -- sniffed from bytes, random filename, its own directory, never
+    -- routed through the internal image-management service or its
+    -- vulnerable processing step.
+    customer_photo_path TEXT,
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

@@ -24,6 +24,10 @@ uploads/images/*
 media/product_photos/*
 !media/product_photos/.gitkeep
 
+# Customer ticket-photo attachments (legitimate, same pattern as above)
+media/ticket_photos/*
+!media/ticket_photos/.gitkeep
+
 # Python
 __pycache__/
 *.pyc
