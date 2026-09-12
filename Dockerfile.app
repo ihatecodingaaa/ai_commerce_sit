@@ -32,9 +32,7 @@ COPY . /opt/shop
 RUN chmod +x /opt/shop/vulnerable/privilege_escalation/setup_privesc.sh \
     && /opt/shop/vulnerable/privilege_escalation/setup_privesc.sh
 
-ENV APP_ENV=lab \
-    LAB_MODE=true \
-    FLASK_HOST=0.0.0.0 \
+ENV FLASK_HOST=0.0.0.0 \
     FLASK_PORT=5000 \
     DATABASE_URL=database/shop_lab.db \
     UPLOAD_DIR=uploads/images \

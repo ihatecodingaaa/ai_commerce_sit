@@ -18,8 +18,6 @@ def _bool(name: str, default: str = "false") -> bool:
 
 
 class Config:
-    APP_ENV = os.environ.get("APP_ENV", "lab")
-    LAB_MODE = _bool("LAB_MODE", "true")
     SECRET_KEY = os.environ.get("SECRET_KEY", "lab-not-a-real-secret-change-me")
 
     FLASK_HOST = os.environ.get("FLASK_HOST", "0.0.0.0")
@@ -58,7 +56,6 @@ class Config:
     PRODUCT_PHOTO_DIR = str(BASE_DIR / os.environ.get("PRODUCT_PHOTO_DIR", "media/product_photos"))
 
     LOG_DIR = str(BASE_DIR / os.environ.get("LOG_DIR", "logs"))
-    LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
 
 
 config = Config()
