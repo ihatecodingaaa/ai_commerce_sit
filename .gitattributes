@@ -1,0 +1,12 @@
+# Paths excluded from `git archive` (used by scripts/build_release.sh to
+# produce the artifact that actually gets deployed to a student-facing
+# target). These files narrate or explain the lab's own vulnerabilities in
+# plain English and must never travel to a box a student can reach, whether
+# over SSH, via a stray file-serving misconfiguration, or by reading the
+# repo on GitHub. Full history (commit messages included) is already
+# excluded by `git archive` automatically -- it never carries logs/refs.
+docs/** export-ignore
+SECURITY.md export-ignore
+vulnerable/upload/README.md export-ignore
+vulnerable/privilege_escalation/README.md export-ignore
+README.md export-ignore

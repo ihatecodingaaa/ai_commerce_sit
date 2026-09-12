@@ -1,0 +1,16 @@
+# Never let solution-spoiling material reach the app image. COPY . /opt/shop
+# in Dockerfile.app makes source world-readable to appuser by design (that's
+# what running the app needs) -- these paths document/explain the lab's own
+# vulnerabilities in plain English and must not be reachable by a student who
+# lands appuser code execution (Stage 9) or reads them off disk beforehand.
+.git
+docs
+SECURITY.md
+vulnerable/upload/README.md
+vulnerable/privilege_escalation/README.md
+
+# Ordinary build noise
+.venv
+__pycache__
+*.pyc
+.pytest_cache

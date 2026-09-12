@@ -12,15 +12,19 @@ local enumeration -> privilege escalation -> root
 ```
 
 Every vulnerability is a real flaw in the actual application architecture
-(not a scripted "click to advance" CTF page) — see
-[docs/attack-timeline.md](docs/attack-timeline.md) for the full stage-by-
-stage writeup and [docs/architecture.md](docs/architecture.md) for the
-system diagram.
+(not a scripted "click to advance" CTF page).
 
-> **Read [SECURITY.md](SECURITY.md) before running this anywhere other than
-> an isolated lab machine or a dedicated, non-public EC2 instance.** This
-> app is designed to be exploitable all the way to root inside its own
-> Docker container.
+> **`docs/` and `SECURITY.md` are instructor-only material** — full
+> stage-by-stage mechanism writeups, architecture diagrams, and exact
+> reproduction commands. If students are meant to discover the chain
+> black-box (given only a URL, nothing else), these files — and this
+> repo's own git history — must never reach a student-reachable host or a
+> public copy of this repository. Deploy with `scripts/build_release.sh`,
+> which strips exactly this material via `.gitattributes`/`.dockerignore`;
+> never `git clone` this repo directly onto a target box. See
+> [docs/attack-timeline.md](docs/attack-timeline.md) and
+> [SECURITY.md](SECURITY.md) (instructor reading) for the full writeup and
+> isolation requirements.
 
 ## Requirements
 
@@ -32,6 +36,12 @@ system diagram.
 - [Ollama](https://ollama.com) — CPU-only is fine.
 
 ## Quick start (Docker — recommended)
+
+This clones the full instructor repo for local development. **For a
+student-facing target host, use `scripts/build_release.sh` instead of
+`git clone`** (see "Deploying to a student-facing host" below) — cloning
+this repo directly there ships the instructor docs and git history (see
+the warning above).
 
 ```bash
 git clone <this repo> shop-lab && cd shop-lab
@@ -106,6 +116,27 @@ python database/seed.py
 # Run
 python run.py
 ```
+
+## Deploying to a student-facing host
+
+Never `git clone` this repo onto a box students can reach — it carries
+`docs/`, `SECURITY.md`, and git history that narrate every vulnerability.
+Instead, build a stripped artifact and ship that:
+
+```bash
+scripts/build_release.sh ./release   # from a clean checkout of this repo
+rsync -a ./release/ target-host:~/shop-lab/
+ssh target-host 'cd ~/shop-lab && cp .env.example .env && docker compose build && docker compose up -d'
+```
+
+`build_release.sh` uses `git archive` (no `.git`, no history, no commit
+messages) plus `.gitattributes` export-ignore rules to drop `docs/`,
+`SECURITY.md`, and both `vulnerable/*/README.md` files, and swaps in
+`README.release.md` as the deploy-facing `README.md`. It also verifies none
+of those paths made it into the output before declaring success. Redeploy
+by re-running the script and re-syncing rather than patching a target
+checkout in place — that way the release process is always what's tested,
+not a hand-edited copy.
 
 ## Port configuration
 
