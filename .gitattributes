@@ -10,3 +10,4 @@ SECURITY.md export-ignore
 vulnerable/upload/README.md export-ignore
 vulnerable/privilege_escalation/README.md export-ignore
 README.md export-ignore
+README.release.md export-ignore

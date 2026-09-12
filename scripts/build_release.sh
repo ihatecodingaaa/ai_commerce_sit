@@ -30,6 +30,11 @@ mkdir -p "$OUT_DIR"
 git archive HEAD | tar -x -C "$OUT_DIR"
 cp README.release.md "$OUT_DIR/README.md"
 
+# git archive still emits directory entries whose contents were fully
+# export-ignored (e.g. docs/) -- harmless, but clean them up so the
+# spot-check below only flags a real leak, not an empty leftover folder.
+find "$OUT_DIR" -depth -type d -empty -delete
+
 echo "== release build complete: $OUT_DIR =="
 echo "spot-check: the following must NOT exist in $OUT_DIR:"
 for path in .git docs SECURITY.md vulnerable/upload/README.md vulnerable/privilege_escalation/README.md; do
