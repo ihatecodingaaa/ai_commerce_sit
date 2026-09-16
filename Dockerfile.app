@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         tar \
         curl \
         procps \
+        libcap2-bin \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/shop
@@ -33,14 +34,23 @@ RUN chmod +x /opt/shop/vulnerable/privilege_escalation/setup_privesc.sh \
     && /opt/shop/vulnerable/privilege_escalation/setup_privesc.sh
 
 ENV FLASK_HOST=0.0.0.0 \
-    FLASK_PORT=5000 \
+    FLASK_PORT=80 \
     DATABASE_URL=database/shop_lab.db \
     UPLOAD_DIR=uploads/images \
     LOG_DIR=logs
 
 RUN chmod +x /opt/shop/scripts/entrypoint.sh
 
-EXPOSE 5000
+# Let appuser (non-root -- see the isolation note above; the privesc lab
+# needs the running app itself to NOT already be root) bind directly to
+# port 80. Docker containers already retain CAP_NET_BIND_SERVICE in their
+# default capability set (no cap_add here -- nothing beyond Docker's own
+# non-privileged default); setcap on the interpreter is what lets a
+# non-root process actually exercise that capability, without making the
+# process -- or anything else -- root.
+RUN setcap 'cap_net_bind_service=+ep' "$(readlink -f "$(command -v python3)")"
+
+EXPOSE 80
 
 USER appuser
 

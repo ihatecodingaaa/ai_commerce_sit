@@ -23,8 +23,10 @@ services:
     # This shares the host's NETWORK namespace only; it grants no
     # filesystem, process, or user-namespace access to the host, so the
     # appuser->root privilege-escalation chain (Stages 8-12) still stays
-    # entirely inside the container. FLASK_PORT (default 5000, see .env)
-    # is what the app binds directly on the host.
+    # entirely inside the container. FLASK_PORT (default 80, see .env) is
+    # what the app binds directly on the host -- no separate reverse proxy
+    # in front of it. Binding 80 as the non-root appuser (see Dockerfile.app)
+    # uses setcap plus Docker's own default capability set, not an added one.
     network_mode: host
     env_file:
       - .env
