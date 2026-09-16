@@ -30,18 +30,6 @@
     links.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => links.classList.remove('open')));
   }
 
-  // Nav search icon: on the products page it just focuses the catalog
-  // search box; anywhere else it's a plain link to /products (its href),
-  // so it's never a no-op click.
-  const navSearchBtn = document.getElementById('nav-search-btn');
-  const catalogSearch = document.getElementById('catalog-search');
-  if (navSearchBtn && catalogSearch) {
-    navSearchBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      catalogSearch.focus();
-    });
-  }
-
   // Profile dropdown (nameplate top-right): Account, dark mode, log out.
   const profileMenu = document.getElementById('profile-menu');
   const profileTrigger = document.getElementById('profile-trigger');

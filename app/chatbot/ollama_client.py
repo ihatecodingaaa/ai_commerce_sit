@@ -19,6 +19,11 @@ def chat(messages: list[dict], tools: list[dict] | None = None) -> dict:
         "model": config.OLLAMA_MODEL,
         "messages": messages,
         "stream": False,
+        "keep_alive": config.OLLAMA_KEEP_ALIVE,
+        "options": {
+            "num_ctx": config.OLLAMA_NUM_CTX,
+            "num_predict": config.OLLAMA_NUM_PREDICT,
+        },
     }
     if tools:
         payload["tools"] = tools

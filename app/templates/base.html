@@ -22,22 +22,21 @@
     <header class="nav">
       <div class="nav-inner">
         <a class="brand" href="/products">
-          <span class="brand-mark"><img src="/static/logo.svg" alt="" class="logo-mark-img"></span>
+          <img src="/static/logo.svg" alt="" class="logo-mark-img">
           <span>ShopLite</span>
-          <span class="brand-spark" aria-hidden="true">&#10024;</span>
         </a>
         <button id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">&#9776;</button>
         <nav id="nav-links" class="nav-links">
           <a href="/products" class="{{ 'active' if request.path.startswith('/products') else '' }}">Products</a>
           {% if user and user.role != 'admin' %}
             <a href="/cart" class="{{ 'active' if request.path == '/cart' else '' }}">Cart</a>
+            <a href="/support" class="{{ 'active' if request.path.startswith('/support') else '' }}">Shopilot</a>
           {% endif %}
           {% if user and user.role == 'admin' %}
             <a href="/admin/products" class="{{ 'active' if request.path.startswith('/admin') else '' }}">Admin</a>
           {% endif %}
         </nav>
         <div class="auth-area">
-          <a href="/products" class="nav-icon" id="nav-search-btn" aria-label="Search products" title="Search products">&#128269;</a>
           {% if user %}
             <div class="profile-menu" id="profile-menu">
               <button type="button" class="profile-trigger" id="profile-trigger" aria-haspopup="true" aria-expanded="false">
