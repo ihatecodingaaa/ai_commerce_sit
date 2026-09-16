@@ -419,7 +419,7 @@ a { color: var(--brand-700); }
 }
 
 @media (max-width: 430px) {
-  .nav-icon:first-of-type { display: none; }
+  #nav-search-btn { display: none; }
   .nav .brand span:not(.brand-mark):not(.brand-spark) { font-size: 1.05rem; }
 }
 
