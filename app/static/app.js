@@ -56,9 +56,8 @@
 
   // Dark mode: an explicit choice (stored in localStorage) always wins;
   // otherwise the page already follows prefers-color-scheme via CSS alone.
-  // Two possible controls share the .theme-toggle-control class: a plain
-  // icon button for logged-out visitors, and an icon+label row inside the
-  // profile dropdown for logged-in ones -- both get kept in sync.
+  // A standalone nav icon button, shared markup/logic regardless of
+  // logged-in state via the .theme-toggle-control class.
   function effectiveTheme() {
     const explicit = localStorage.getItem('theme');
     if (explicit === 'dark' || explicit === 'light') return explicit;
