@@ -27,14 +27,19 @@ class Config:
     DATABASE_PATH = str(BASE_DIR / os.environ.get("DATABASE_URL", "database/shop_lab.db"))
 
     OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
-    # qwen2.5:1.5b, not the earlier default of qwen2.5:3b -- same family/
-    # tokenizer/chat template, so tool-calling shape and instruction-
-    # following behavior (including following instructions embedded in
-    # retrieved content, which the Stage 4/5 injection depends on) carry
-    # over, but roughly half the parameters to run through on a CPU-only
-    # 2 vCPU box. If injection reliability ever looks materially worse than
-    # qwen2.5:3b in practice, that's the first thing to revert.
-    OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:1.5b")
+    # qwen2.5:1.5b was tried as a faster default and reverted: a direct A/B
+    # against qwen2.5:3b on this app's exact system prompt/tool schemas
+    # (same messages, same /api/chat call, both models installed side by
+    # side) showed 1.5b never emitted a tool_calls entry -- not for a
+    # direct "what are my orders" question, not even for a knowledge_base_
+    # search query naming the exact term needed -- while 3b called the
+    # right tool every time. Tool-calling is the mechanism Stage 3 onward
+    # depends on (the injection chain requires the model to actually call
+    # knowledge_base_search again after reading the planted instruction),
+    # so a model that skips tool calls breaks the lab, not just answers
+    # slower. Speed came from OLLAMA_KEEP_ALIVE/NUM_CTX/NUM_PREDICT below
+    # instead, which don't carry this risk.
+    OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
     OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "60"))
     # How long Ollama keeps the model loaded in memory after a request.
     # Ollama's own default (5m) means any gap longer than that -- a student
