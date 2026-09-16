@@ -224,12 +224,14 @@ a { color: var(--brand-700); }
   letter-spacing: -0.02em;
   flex-shrink: 0;
 }
-/* app/static/logo.svg -- replace this file with your own logo any time;
-   same filename means no template/CSS changes needed. */
+/* app/static/logo.png -- replace this file with your own logo any time;
+   same filename means no template/CSS changes needed. Sized by height with
+   width auto (not a fixed square) since the mark itself isn't square, and
+   left unclipped/un-rounded since it's already a transparent, silhouetted
+   shape rather than a square tile that needs a rounded mask. */
 .logo-mark-img {
-  width: 28px;
   height: 28px;
-  border-radius: 9px;
+  width: auto;
   display: inline-block;
   vertical-align: middle;
   flex-shrink: 0;
