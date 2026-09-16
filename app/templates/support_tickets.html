@@ -2,10 +2,9 @@
 {% block title %}Support Tickets - ShopLite{% endblock %}
 {% block content %}
 {% set active = 'tickets' %}
-<div class="section-heading">
-  <h1>Support tickets</h1>
-</div>
-<p class="muted" style="margin-top:-0.5rem;">Need something a human should look at? Open a ticket below. Prefer a quick answer first? Try the <a href="/support">chat</a>.</p>
+<div class="eyebrow">Care, with a human touch</div>
+<h1 class="page-heading" style="margin-top:0.5rem">Open a <em>ticket.</em></h1>
+<p class="muted" style="margin-top:-0.5rem;">Need something a human should look at? Open a ticket below. Prefer a quick answer first? Try the <a href="/support">AI concierge</a>.</p>
 
 {% include "_support_subnav.html" %}
 
@@ -20,7 +19,7 @@
   </form>
 </div>
 
-<div class="section-heading"><h2>Your tickets</h2></div>
+<div class="section-heading-row"><h2>Your tickets</h2></div>
 {% if tickets %}
 <ul class="ticket-list stagger">
   {% for t in tickets %}

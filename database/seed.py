@@ -90,12 +90,12 @@ def seed(conn: sqlite3.Connection):
     # Fifth element is the filename under database/seed_photos/, copied into
     # PRODUCT_PHOTO_DIR below -- see SEED_PHOTOS_DIR's comment above.
     products = [
-        ("Aurora Wireless Earbuds", "Audio", 5999, "Compact true-wireless earbuds with 24h battery life and active noise cancellation.", "aurora-wireless-earbuds.png"),
-        ("Pulse Fitness Band", "Wearables", 3499, "Lightweight fitness tracker with heart-rate monitoring and 7-day battery.", "pulse-fitness-band.png"),
-        ("Nimbus Portable SSD 1TB", "Storage", 8999, "USB-C portable SSD, up to 1050MB/s read speeds, shock resistant.", "nimbus-portable-ssd.jpg"),
-        ("Lumen Smart Desk Lamp", "Home", 2999, "Adjustable smart desk lamp with app-controlled brightness and color temperature.", "lumen-smart-desk-lamp.jpg"),
-        ("Voyager Travel Charger", "Accessories", 1999, "65W GaN USB-C charger with three ports for laptops, phones, and tablets.", "voyager-travel-charger.jpg"),
-        ("Echo Mini Bluetooth Speaker", "Audio", 2499, "Palm-sized Bluetooth speaker with surprisingly big sound and IPX6 rating.", "echo-mini-bluetooth-speaker.jpg"),
+        ("Linden Canvas Tote", "Bags", 12800, "Heavyweight cotton canvas tote with reinforced webbing straps and a boxy, structured base -- built for the studio, the market, and everything in between.", "linden-canvas-tote.jpg"),
+        ("Halo Gold Hoop Earrings", "Jewelry", 18500, "Sculptural 14k gold-plated hoops with a softly rounded profile, hand-polished for a quiet shine that wears well from morning to evening.", "halo-gold-hoop-earrings.jpg"),
+        ("Terra Stoneware Vessel Trio", "Home", 9600, "Three hand-thrown stoneware vessels in a considered trio, left unglazed for a raw, chalky texture that ages beautifully on a shelf or console.", "terra-stoneware-vessel-trio.jpg"),
+        ("Journey Leather Card Case", "Travel", 6800, "A slim, full-grain leather card case sized for a passport and the essentials -- hand-stitched edges that break in with wear.", "journey-leather-card-case.jpg"),
+        ("Twine Gold Chain Bracelet", "Jewelry", 14500, "A braided multi-strand gold-tone chain with a secure lobster clasp, designed to layer or wear alone.", "twine-gold-chain-bracelet.jpg"),
+        ("Ember Ritual Incense Set", "Home", 4200, "Hand-rolled incense sticks in a warm, woody scent -- a small ritual for closing out the day.", "ember-ritual-incense-set.jpg"),
     ]
     product_ids = []
     for name, category, price, desc, photo_filename in products:
@@ -113,15 +113,15 @@ def seed(conn: sqlite3.Connection):
 
     # ---- Orders (seed history for alice.customer) --------------------------
     cur.execute(
-        "INSERT INTO orders (user_id, product_id, quantity, total_cents, status) VALUES (?, ?, 1, 5999, 'delivered')",
+        "INSERT INTO orders (user_id, product_id, quantity, total_cents, status) VALUES (?, ?, 1, 12800, 'delivered')",
         (customer_ids["alice.customer"], product_ids[0]),
     )
     cur.execute(
-        "INSERT INTO orders (user_id, product_id, quantity, total_cents, status) VALUES (?, ?, 2, 3998, 'shipped')",
+        "INSERT INTO orders (user_id, product_id, quantity, total_cents, status) VALUES (?, ?, 2, 29000, 'shipped')",
         (customer_ids["alice.customer"], product_ids[4]),
     )
     cur.execute(
-        "INSERT INTO orders (user_id, product_id, quantity, total_cents, status) VALUES (?, ?, 1, 8999, 'placed')",
+        "INSERT INTO orders (user_id, product_id, quantity, total_cents, status) VALUES (?, ?, 1, 9600, 'placed')",
         (customer_ids["bob.customer"], product_ids[2]),
     )
 
@@ -134,11 +134,11 @@ def seed(conn: sqlite3.Connection):
     # ---- Reviews (legitimate seed reviews) ----------------------------------
     cur.execute(
         "INSERT INTO reviews (product_id, user_id, rating, body) VALUES (?, ?, 5, ?)",
-        (product_ids[0], customer_ids["bob.customer"], "Great sound and the battery really does last all day. Shipping was fast too."),
+        (product_ids[0], customer_ids["bob.customer"], "Sturdy canvas and the straps haven't stretched at all. Perfect size for groceries and gym clothes alike."),
     )
     cur.execute(
         "INSERT INTO reviews (product_id, user_id, rating, body) VALUES (?, ?, 4, ?)",
-        (product_ids[2], customer_ids["alice.customer"], "Fast drive, feels well built. Wish it came with a carrying pouch."),
+        (product_ids[2], customer_ids["alice.customer"], "Beautiful texture in person, a little smaller than I expected but they look wonderful grouped together on my console table."),
     )
     conn.commit()
 
@@ -150,8 +150,8 @@ def seed(conn: sqlite3.Connection):
     # ---- Customer support ticket (visibility='customer') --------------------
     cur.execute(
         "INSERT INTO tickets (ticket_ref, user_id, owner_emp_id, subject, body, service, environment, status, visibility) "
-        "VALUES ('CUST-10021', ?, ?, 'Question about earbuds warranty', "
-        "'Hi, do the Aurora Wireless Earbuds come with a 1-year warranty in my region?', "
+        "VALUES ('CUST-10021', ?, ?, 'Question about tote return policy', "
+        "'Hi, does the Linden Canvas Tote come with any care instructions, and can it be returned if the canvas gets marked during shipping?', "
         "'storefront', 'production', 'open', 'customer')",
         (customer_ids["alice.customer"], emp_ids["Dana Okafor"]),
     )
@@ -201,7 +201,7 @@ def seed(conn: sqlite3.Connection):
     public_kb = [
         ("Shipping times", "Standard shipping takes 3-5 business days within the continental US. Express shipping (1-2 business days) is available at checkout for an additional fee."),
         ("Returns and refunds", "You can return most items within 30 days of delivery for a full refund. Use the 'Buy now' order page or ask this chat to file a refund request for you."),
-        ("Warranty coverage", "All ShopLite electronics come with a standard 1-year manufacturer warranty covering defects. Accidental damage is not covered."),
+        ("Warranty coverage", "All ShopLite pieces are backed by a 1-year workmanship guarantee covering material and construction defects. Wear from everyday use is not covered."),
         ("Payment methods", "ShopLite accepts major credit cards and ShopLite gift cards. We do not support cryptocurrency payments at this time."),
         ("Updating your account email", "You can update your account email from the Account page. If you no longer have access to your old email, contact support to verify your identity."),
         ("Contacting support", "The fastest way to get help is this support chat -- it can look up your orders and tickets directly. You can also open a ticket from the Support page."),

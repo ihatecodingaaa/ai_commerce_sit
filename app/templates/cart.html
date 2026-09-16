@@ -1,14 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Your Cart - ShopLite{% endblock %}
+{% block title %}Your Bag - ShopLite{% endblock %}
 {% block content %}
-<div class="section-heading">
-  <h1>Your cart</h1>
-</div>
+<div class="eyebrow">Your edit</div>
+<h1 class="page-heading" style="margin-top:0.5rem">The <em>bag.</em></h1>
 
 {% if cart_items %}
-<div class="data-table-wrap animate-in" style="margin-bottom:1.25rem;">
+<div class="data-table-wrap animate-in" style="margin:1.5rem 0 1.25rem;">
   <table class="data-table" id="cart-table">
-    <thead><tr><th></th><th>Product</th><th>Price</th><th>Qty</th><th>Line total</th><th></th></tr></thead>
+    <thead><tr><th></th><th>Piece</th><th>Price</th><th>Qty</th><th>Line total</th><th></th></tr></thead>
     <tbody>
     {% for item in cart_items %}
       <tr data-item-id="{{ item.id }}" data-price-cents="{{ item.price_cents }}">
@@ -34,13 +33,13 @@
 
 <div class="card animate-in" style="padding:1.25rem 1.5rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
   <div>
-    <div class="muted" style="font-size:0.82rem;">Cart total</div>
+    <div class="muted" style="font-size:0.82rem;">Bag total</div>
     <div id="cart-grand-total" style="font-size:1.4rem; font-weight:800;"></div>
   </div>
   <button id="checkout-btn" class="btn btn-primary">Checkout</button>
 </div>
 {% else %}
-<div class="empty-state animate-in">Your cart is empty &mdash; <a href="/products">browse products</a> to add something.</div>
+<div class="empty-state animate-in">Your bag is empty &mdash; <a href="/products">browse the edit</a> to add something.</div>
 {% endif %}
 
 <script>

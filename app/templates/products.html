@@ -1,46 +1,42 @@
 {% extends "base.html" %}
-{% block title %}Products - ShopLite{% endblock %}
+{% block title %}Shop - ShopLite{% endblock %}
 {% block content %}
 <section class="home-hero animate-in">
-  <div class="hero-grid-lines" aria-hidden="true"></div>
   <div class="hero-copy">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> Curated tech, no clutter</div>
-    <h1>Small gadgets.<br><span>Big upgrades.</span></h1>
-    <p>Meet the smart little things that make everyday life feel lighter, faster, and a whole lot more fun.</p>
+    <div class="eyebrow"><span class="hero-eyebrow-dot"></span> Objects with intention</div>
+    <h1>A quieter kind of <em>everyday.</em></h1>
+    <p>Thoughtful pieces for the rituals that shape your day -- picked in small, considered runs and made to be kept, not replaced.</p>
     <div class="hero-actions">
-      <a href="#catalog" class="btn btn-primary hero-cta">Explore the drop &#8599;</a>
-      <a href="/about" class="hero-text-link">Why ShopLite <span>&rarr;</span></a>
+      <a href="#catalog" class="btn btn-primary">Explore the edit</a>
+      <a href="/about" class="text-link">Why ShopLite &rarr;</a>
+    </div>
+    <div class="hero-principles">
+      <div><span class="micro-label">01</span><small>Material-first design</small></div>
+      <div><span class="micro-label">02</span><small>Small batch making</small></div>
+      <div><span class="micro-label">03</span><small>A human aftercare team</small></div>
     </div>
   </div>
-
-  <div class="hero-showcase" aria-hidden="true">
-    <div class="showcase-glow"></div>
-    <div class="showcase-ring showcase-ring-one"></div>
-    <div class="showcase-ring showcase-ring-two"></div>
-    <div class="hero-product-image">
-      {% if products and products[0].image_path %}
-      <img src="/product-photos/{{ products[0].image_path }}" alt="{{ products[0].name }}">
-      {% elif products %}
-      {{ products[0].name[0]|upper }}
-      {% else %}
-      &#9889;
-      {% endif %}
-    </div>
+  <div class="hero-image-wrap">
+    {% if products and products[0].image_path %}
+    <img src="/product-photos/{{ products[0].image_path }}" alt="{{ products[0].name }}">
+    {% endif %}
+    <div class="hero-image-overlay"></div>
+    <div class="hero-image-caption"><span>Field note / 01</span><span>The current edit</span></div>
   </div>
 </section>
 
 <section class="benefit-strip animate-in" aria-label="ShopLite benefits">
-  <div class="benefit-item"><span><strong>Free shipping</strong><small>On orders over $50</small></span></div>
-  <div class="benefit-item"><span><strong>30-day returns</strong><small>Try it, love it, or send it back</small></span></div>
-  <div class="benefit-item"><span><strong>Human support</strong><small>Real help from real people</small></span></div>
+  <div class="benefit-item"><strong>The daily carry</strong><small>Bags and cases built to be used, every day, for years.</small></div>
+  <div class="benefit-item"><strong>The quiet ritual</strong><small>Small objects that mark the start and close of a day.</small></div>
+  <div class="benefit-item"><strong>The considered gift</strong><small>Thoughtful without needing to know someone's exact size.</small></div>
 </section>
 
 <section class="catalog-section" id="catalog">
   <div class="catalog-heading">
     <div>
-      <div class="eyebrow eyebrow-dark">The everyday edit</div>
-      <h2>Find your next <span>favorite.</span></h2>
-      <p>{{ products|length }} tiny upgrade{{ '' if products|length == 1 else 's' }}, carefully picked for the way you actually live.</p>
+      <div class="eyebrow">The current edit</div>
+      <h2 class="section-heading">Find your next <em>favorite.</em></h2>
+      <p>{{ products|length }} pieces, carefully picked for the way you actually live.</p>
     </div>
     <div class="catalog-controls">
       <label class="search-box">&#128269;<input id="catalog-search" type="search" placeholder="Search the edit..."></label>
@@ -54,19 +50,22 @@
     {% endfor %}
   </div>
 
-  <div class="product-grid upgraded-grid stagger" id="product-grid">
+  <div class="product-grid stagger" id="product-grid">
     {% for p in products %}
-    <a class="product-card premium-card card-tone-{{ (p.id % 4) + 1 }}" href="/products/{{ p.id }}"
+    <a class="product-card" href="/products/{{ p.id }}"
        data-category="{{ p.category }}" data-search="{{ (p.name ~ ' ' ~ p.category ~ ' ' ~ p.description)|lower }}">
-      <div class="product-card-topline"><span class="category-badge">{{ p.category }}</span></div>
-      {% if p.image_path %}
-      <div class="product-thumb"><img src="/product-photos/{{ p.image_path }}" alt="{{ p.name }}" loading="lazy"><span class="thumb-sheen"></span></div>
-      {% else %}
-      <div class="product-thumb thumb-{{ loop.index0 % 6 }}">{{ p.name[0]|upper }}<span class="thumb-sheen"></span></div>
-      {% endif %}
+      <div class="product-thumb">
+        <div class="product-card-topline"><span class="category-badge">{{ p.category }}</span></div>
+        {% if p.image_path %}
+        <img src="/product-photos/{{ p.image_path }}" alt="{{ p.name }}" loading="lazy">
+        {% else %}
+        <div class="thumb-{{ loop.index0 % 6 }}" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;">{{ p.name[0]|upper }}</div>
+        {% endif %}
+        <span class="quick-view">View piece &#8599;</span>
+      </div>
       <div class="product-card-body">
         <h3>{{ p.name }}</h3>
-        <p class="desc">{{ p.description[:100] }}{% if p.description|length > 100 %}&hellip;{% endif %}</p>
+        <p class="desc">{{ p.description[:90] }}{% if p.description|length > 90 %}&hellip;{% endif %}</p>
         <div class="card-meta"><span class="stars">&#9733;&#9733;&#9733;&#9733;<span class="star-empty">&#9733;</span></span></div>
         <div class="price-row">
           <div class="price">${{ "%.2f"|format(p.price_cents / 100) }}</div>
@@ -78,9 +77,24 @@
   </div>
 
   <div class="empty-state search-empty" id="catalog-empty" hidden>
-    <h3>No gadgets found</h3>
+    <h3>No pieces match that search.</h3>
     <p>Try a different search or browse all of the edit.</p>
     <button class="btn btn-secondary btn-sm" type="button" id="catalog-reset">Reset search</button>
+  </div>
+</section>
+
+<section class="concierge-panel animate-in">
+  <div class="concierge-copy">
+    <div class="eyebrow">The ShopLite concierge</div>
+    <h2>A little help finding the right thing.</h2>
+    <p>Ask Shopilot, our AI concierge, about fit, care, gifting, or building a considered set. It knows the collection by heart.</p>
+    <a href="/support" class="btn btn-primary">Meet the concierge &#10024;</a>
+  </div>
+  <div class="concierge-visual">
+    {% if products and products[2].image_path %}
+    <img src="/product-photos/{{ products[2].image_path }}" alt="">
+    {% endif %}
+    <span class="concierge-icon">&#10024;</span>
   </div>
 </section>
 

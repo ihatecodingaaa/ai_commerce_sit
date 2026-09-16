@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Support Chat - ShopLite{% endblock %}
+{% block title %}AI Concierge - ShopLite{% endblock %}
 {% block content %}
 {% set active = 'chat' %}
 <section class="hero animate-in" style="margin-bottom:1.25rem;">
-  <span class="hero-badge">Live chat</span>
-  <h1>Ask Shopilot anything.</h1>
-  <p>Orders, account questions, product info &mdash; it can look most of it up directly. Stay on this page while it replies; a full reply can take a little while to come through.</p>
+  <span class="hero-badge">ShopLite intelligence</span>
+  <h1>Meet your <em>concierge.</em></h1>
+  <p>Orders, account questions, product care, gifting -- Shopilot can look most of it up directly. Stay on this page while it replies; a full reply can take a little while to come through.</p>
 </section>
 
 {% include "_support_subnav.html" %}
@@ -15,7 +15,7 @@
     <img src="/static/shopilot-icon.svg" alt="" class="chat-avatar">
     <div>
       <strong>Shopilot</strong>
-      <div class="chat-sub"><span class="dot"></span> ShopLite support assistant</div>
+      <div class="chat-sub"><span class="dot"></span> ShopLite AI concierge</div>
     </div>
   </div>
   <div id="chat-log"></div>
@@ -25,7 +25,7 @@
     <button type="button" class="chip-btn">Tell me about my account</button>
   </div>
   <form id="chat-form">
-    <input id="chat-input" type="text" placeholder="Ask about your order, account, or products..." autocomplete="off">
+    <input id="chat-input" type="text" placeholder="Ask about your order, account, or the collection..." autocomplete="off">
     <button type="submit" aria-label="Send">&#10148;</button>
   </form>
 </div>

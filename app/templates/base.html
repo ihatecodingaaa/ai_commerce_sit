@@ -23,14 +23,15 @@
       <div class="nav-inner">
         <a class="brand" href="/products">
           <img src="/static/logo.png" alt="" class="logo-mark-img">
-          <span>ShopLite</span>
+          <span class="brand-word">ShopLite</span>
         </a>
         <button id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">&#9776;</button>
         <nav id="nav-links" class="nav-links">
-          <a href="/products" class="{{ 'active' if request.path.startswith('/products') else '' }}">Products</a>
+          <a href="/products" class="{{ 'active' if request.path.startswith('/products') else '' }}">Shop</a>
+          <a href="/about" class="{{ 'active' if request.path == '/about' else '' }}">Our story</a>
           {% if user and user.role != 'admin' %}
-            <a href="/cart" class="{{ 'active' if request.path == '/cart' else '' }}">Cart</a>
-            <a href="/support" class="{{ 'active' if request.path.startswith('/support') else '' }}">Shopilot</a>
+            <a href="/cart" class="{{ 'active' if request.path == '/cart' else '' }}">Bag</a>
+            <a href="/support" class="{{ 'active' if request.path.startswith('/support') else '' }}">Concierge</a>
           {% endif %}
           {% if user and user.role == 'admin' %}
             <a href="/admin/products" class="{{ 'active' if request.path.startswith('/admin') else '' }}">Admin</a>
@@ -61,7 +62,7 @@
               <span class="theme-toggle-icon">&#127769;</span>
             </button>
             <a href="/login" class="link-btn">Log in</a>
-            <a href="/register" class="btn btn-primary btn-sm nav-join">Join the club <span>&#8599;</span></a>
+            <a href="/register" class="btn btn-primary btn-sm nav-join">Create account</a>
           {% endif %}
         </div>
       </div>
@@ -74,20 +75,22 @@
     <footer class="site-footer">
       <div class="footer-inner">
         <div class="footer-brand">
-          <span class="brand"><img src="/static/logo.png" alt="" class="logo-mark-img"> ShopLite</span>
-          <p class="muted">Small gadgets, big upgrades.</p>
+          <span class="brand"><img src="/static/logo.png" alt="" class="logo-mark-img"> <span class="brand-word">ShopLite</span></span>
+          <p class="muted">Considered pieces for the rituals that shape your day.</p>
         </div>
         <div class="footer-col">
-          <span class="footer-col-title">Company</span>
-          <a href="/about">About</a>
+          <span class="footer-col-title">Explore</span>
+          <a href="/products">Shop</a>
+          <a href="/about">Our story</a>
+          <a href="/support">AI concierge</a>
         </div>
         <div class="footer-col">
-          <span class="footer-col-title">Help</span>
+          <span class="footer-col-title">Care</span>
           <a href="/support">Chat with Shopilot</a>
           <a href="/support/tickets">Support tickets</a>
         </div>
       </div>
-      <div class="footer-bottom muted">&copy; 2026 ShopLite. All rights reserved.</div>
+      <div class="footer-bottom">&copy; 2026 ShopLite. All rights reserved.</div>
     </footer>
   </div>
 

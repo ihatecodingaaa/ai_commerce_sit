@@ -2,8 +2,8 @@
 {% block title %}Admin - Support Tickets - ShopLite{% endblock %}
 {% block content %}
 {% set active = 'tickets' %}
-<div class="section-heading">
-  <h1>Support tickets</h1>
+<div class="admin-header">
+  <div><div class="eyebrow">Care operations</div><h1 class="page-heading" style="margin-top:0.5rem">Support <em>tickets.</em></h1></div>
   <span class="muted">{{ tickets|length }} open across all customers</span>
 </div>
 {% include "_admin_subnav.html" %}

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ product.name }} - ShopLite{% endblock %}
 {% block content %}
-<a href="/products" class="back-link">&larr; Back to products</a>
+<a href="/products" class="back-link">&larr; Back to the edit</a>
 
 <div class="detail-grid animate-in">
   {% if product.image_path %}
@@ -10,11 +10,11 @@
   <div class="detail-thumb thumb-{{ product.id % 6 }}">{{ product.name[0]|upper }}</div>
   {% endif %}
   <div>
-    <span class="category-badge">{{ product.category }}</span>
-    <h1>{{ product.name }}</h1>
-    <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9734; <span class="muted" style="font-size:0.85rem">({{ reviews|length }} review{{ '' if reviews|length == 1 else 's' }})</span></div>
+    <div class="eyebrow">{{ product.category }}</div>
+    <h1 style="margin-top:0.5rem">{{ product.name }}</h1>
+    <div class="stars" style="margin-bottom:0.8rem">&#9733;&#9733;&#9733;&#9733;&#9734; <span class="muted" style="font-size:0.85rem">({{ reviews|length }} review{{ '' if reviews|length == 1 else 's' }})</span></div>
     <p>{{ product.description }}</p>
-    <div class="price" style="font-size:1.4rem">${{ "%.2f"|format(product.price_cents / 100) }}</div>
+    <div class="price" style="font-size:1.6rem; margin:1rem 0">${{ "%.2f"|format(product.price_cents / 100) }}</div>
 
     {% if user and user.role == 'customer' %}
     <form id="buy-form" class="purchase-panel" data-product-id="{{ product.id }}">
@@ -22,13 +22,19 @@
         <label style="margin:0">Qty</label>
         <input type="number" id="buy-qty" value="1" min="1">
       </div>
-      <button type="submit" class="btn btn-primary">Add to cart</button>
+      <button type="submit" class="btn btn-primary">Add to bag</button>
     </form>
     {% elif user and user.role == 'admin' %}
     <p class="muted">Admin accounts manage the catalog but don't place orders. <a href="/admin/products">Edit this product</a>.</p>
     {% else %}
-    <p><a href="/login">Log in</a> to add this to your cart or leave a review.</p>
+    <p><a href="/login">Log in</a> to add this to your bag or leave a review.</p>
     {% endif %}
+
+    <div class="info-box-row">
+      <div class="info-box">&#128666; Complimentary delivery on orders over $150</div>
+      <div class="info-box">&#128260; 30-day returns, no questions asked</div>
+      <div class="info-box">&#10024; Need a second opinion? <a href="/support" style="color:inherit">Ask Shopilot</a></div>
+    </div>
   </div>
 </div>
 
@@ -45,7 +51,7 @@
       <option value="1">&#9733; 1</option>
     </select>
     <label>Your review</label>
-    <textarea id="review-body" rows="3" placeholder="Share your thoughts about this product..."></textarea>
+    <textarea id="review-body" rows="3" placeholder="Share your thoughts about this piece..."></textarea>
     <button type="submit" class="btn btn-primary" style="margin-top:0.9rem">Submit review</button>
   </form>
 </div>
@@ -226,15 +232,15 @@ document.getElementById('buy-form')?.addEventListener('submit', async (e) => {
       body: JSON.stringify({product_id: productId, quantity})
     });
     if (res.ok) {
-      showToast('Added to cart!', 'success');
+      showToast('Added to bag!', 'success');
     } else {
-      showToast('Error adding to cart.', 'error');
+      showToast('Error adding to bag.', 'error');
     }
   } catch (err) {
-    showToast('Network error adding to cart.', 'error');
+    showToast('Network error adding to bag.', 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Add to cart';
+    btn.textContent = 'Add to bag';
   }
 });
 </script>
