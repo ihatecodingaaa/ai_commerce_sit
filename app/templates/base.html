@@ -20,46 +20,51 @@
 <body>
   <div class="page-wrap">
     <header class="nav">
-      <a class="brand" href="/products">
-        <img src="/static/logo.svg" alt="" class="logo-mark-img"> ShopLite
-      </a>
-      <button id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">&#9776;</button>
-      <nav id="nav-links" class="nav-links">
-        <a href="/products" class="{{ 'active' if request.path.startswith('/products') else '' }}">Products</a>
-        {% if user and user.role != 'admin' %}
-          <a href="/cart" class="{{ 'active' if request.path == '/cart' else '' }}">Cart</a>
-        {% endif %}
-        {% if user and user.role == 'admin' %}
-          <a href="/admin/products" class="{{ 'active' if request.path.startswith('/admin') else '' }}">Admin</a>
-        {% endif %}
-      </nav>
-      <div class="auth-area">
-        {% if user %}
-          <div class="profile-menu" id="profile-menu">
-            <button type="button" class="profile-trigger" id="profile-trigger" aria-haspopup="true" aria-expanded="false">
-              <span class="avatar {{ avatar_class(user.avatar) }}">{{ avatar_glyph(user.avatar, user.full_name) }}</span>
-              <span class="profile-trigger-name">{{ user.full_name.split(' ')[0] }}</span>
-              <span class="category-badge">{{ 'Admin' if user.role == 'admin' else 'Customer' }}</span>
-              <span class="profile-caret">&#9662;</span>
-            </button>
-            <div class="profile-dropdown" id="profile-dropdown" hidden>
-              <a href="/account" class="profile-dropdown-item">Account</a>
-              <button type="button" class="profile-dropdown-item theme-toggle-control" id="theme-toggle-item">
-                <span class="theme-toggle-label">Dark mode</span>
+      <div class="nav-inner">
+        <a class="brand" href="/products">
+          <span class="brand-mark"><img src="/static/logo.svg" alt="" class="logo-mark-img"></span>
+          <span>ShopLite</span>
+          <span class="brand-spark" aria-hidden="true">&#10024;</span>
+        </a>
+        <button id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">&#9776;</button>
+        <nav id="nav-links" class="nav-links">
+          <a href="/products" class="{{ 'active' if request.path.startswith('/products') else '' }}">Products</a>
+          {% if user and user.role != 'admin' %}
+            <a href="/cart" class="{{ 'active' if request.path == '/cart' else '' }}">Cart</a>
+          {% endif %}
+          {% if user and user.role == 'admin' %}
+            <a href="/admin/products" class="{{ 'active' if request.path.startswith('/admin') else '' }}">Admin</a>
+          {% endif %}
+        </nav>
+        <div class="auth-area">
+          <a href="/products" class="nav-icon" id="nav-search-btn" aria-label="Search products" title="Search products">&#128269;</a>
+          {% if user %}
+            <div class="profile-menu" id="profile-menu">
+              <button type="button" class="profile-trigger" id="profile-trigger" aria-haspopup="true" aria-expanded="false">
+                <span class="avatar {{ avatar_class(user.avatar) }}">{{ avatar_glyph(user.avatar, user.full_name) }}</span>
+                <span class="profile-trigger-name">{{ user.full_name.split(' ')[0] }}</span>
+                <span class="category-badge">{{ 'Admin' if user.role == 'admin' else 'Customer' }}</span>
+                <span class="profile-caret">&#9662;</span>
               </button>
-              <div class="profile-dropdown-sep"></div>
-              <form action="/logout" method="post">
-                <button type="submit" class="profile-dropdown-item profile-dropdown-danger">Log out</button>
-              </form>
+              <div class="profile-dropdown" id="profile-dropdown" hidden>
+                <a href="/account" class="profile-dropdown-item">Account</a>
+                <button type="button" class="profile-dropdown-item theme-toggle-control" id="theme-toggle-item">
+                  <span class="theme-toggle-label">Dark mode</span>
+                </button>
+                <div class="profile-dropdown-sep"></div>
+                <form action="/logout" method="post">
+                  <button type="submit" class="profile-dropdown-item profile-dropdown-danger">Log out</button>
+                </form>
+              </div>
             </div>
-          </div>
-        {% else %}
-          <button class="icon-btn theme-toggle-control" id="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
-            <span class="theme-toggle-icon">&#127769;</span>
-          </button>
-          <a href="/login" class="link-btn">Log in</a>
-          <a href="/register" class="btn btn-primary btn-sm">Sign up</a>
-        {% endif %}
+          {% else %}
+            <button class="nav-icon theme-toggle-control" id="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
+              <span class="theme-toggle-icon">&#127769;</span>
+            </button>
+            <a href="/login" class="link-btn">Log in</a>
+            <a href="/register" class="btn btn-primary btn-sm nav-join">Join the club <span>&#8599;</span></a>
+          {% endif %}
+        </div>
       </div>
     </header>
 

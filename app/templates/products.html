@@ -1,33 +1,139 @@
 {% extends "base.html" %}
 {% block title %}Products - ShopLite{% endblock %}
 {% block content %}
-<section class="hero animate-in">
-  <span class="hero-badge">&#9889; Free shipping over $50</span>
-  <h1>Small gadgets, big upgrades.</h1>
-  <p>Earbuds, trackers, chargers and more &mdash; curated electronics for everyday life.</p>
+<section class="home-hero animate-in">
+  <div class="hero-grid-lines" aria-hidden="true"></div>
+  <div class="hero-copy">
+    <div class="eyebrow"><span class="eyebrow-dot"></span> Curated tech, no clutter</div>
+    <h1>Small gadgets.<br><span>Big upgrades.</span></h1>
+    <p>Meet the smart little things that make everyday life feel lighter, faster, and a whole lot more fun.</p>
+    <div class="hero-actions">
+      <a href="#catalog" class="btn btn-primary hero-cta">Explore the drop &#8599;</a>
+      <a href="/about" class="hero-text-link">Why ShopLite <span>&rarr;</span></a>
+    </div>
+  </div>
+
+  <div class="hero-showcase" aria-hidden="true">
+    <div class="showcase-glow"></div>
+    <div class="showcase-ring showcase-ring-one"></div>
+    <div class="showcase-ring showcase-ring-two"></div>
+    <div class="hero-product-image">
+      {% if products and products[0].image_path %}
+      <img src="/product-photos/{{ products[0].image_path }}" alt="{{ products[0].name }}">
+      {% elif products %}
+      {{ products[0].name[0]|upper }}
+      {% else %}
+      &#9889;
+      {% endif %}
+    </div>
+  </div>
 </section>
 
-<div class="section-heading">
-  <h2>All products</h2>
-  <span class="muted">{{ products|length }} items</span>
-</div>
+<section class="benefit-strip animate-in" aria-label="ShopLite benefits">
+  <div class="benefit-item"><span class="benefit-icon">&#128666;</span><span><strong>Free shipping</strong><small>On orders over $50</small></span></div>
+  <div class="benefit-item"><span class="benefit-icon">&#128737;</span><span><strong>30-day returns</strong><small>Try it, love it, or send it back</small></span></div>
+  <div class="benefit-item"><span class="benefit-icon">&#127911;</span><span><strong>Human support</strong><small>Real help from real people</small></span></div>
+</section>
 
-<div class="product-grid stagger">
-  {% for p in products %}
-  <a class="product-card" href="/products/{{ p.id }}">
-    {% if p.image_path %}
-    <div class="product-thumb"><img src="/product-photos/{{ p.image_path }}" alt="{{ p.name }}" loading="lazy"></div>
-    {% else %}
-    <div class="product-thumb thumb-{{ loop.index0 % 6 }}">{{ p.name[0]|upper }}</div>
-    {% endif %}
-    <div class="product-card-body">
-      <span class="category-badge">{{ p.category }}</span>
-      <h3>{{ p.name }}</h3>
-      <p class="desc">{{ p.description[:100] }}{% if p.description|length > 100 %}&hellip;{% endif %}</p>
-      <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
-      <div class="price">${{ "%.2f"|format(p.price_cents / 100) }}</div>
+<section class="catalog-section" id="catalog">
+  <div class="catalog-heading">
+    <div>
+      <div class="eyebrow eyebrow-dark">The everyday edit</div>
+      <h2>Find your next <span>favorite.</span></h2>
+      <p>{{ products|length }} tiny upgrade{{ '' if products|length == 1 else 's' }}, carefully picked for the way you actually live.</p>
     </div>
-  </a>
-  {% endfor %}
-</div>
+    <div class="catalog-controls">
+      <label class="search-box">&#128269;<input id="catalog-search" type="search" placeholder="Search the edit..."></label>
+    </div>
+  </div>
+
+  <div class="category-row" role="tablist" aria-label="Product categories">
+    <button type="button" role="tab" aria-selected="true" class="category-filter active" data-category="All">All<span>{{ products|length }}</span></button>
+    {% for c in categories %}
+    <button type="button" role="tab" aria-selected="false" class="category-filter" data-category="{{ c.name }}">{{ c.name }}<span>{{ c.count }}</span></button>
+    {% endfor %}
+  </div>
+
+  <div class="product-grid upgraded-grid stagger" id="product-grid">
+    {% for p in products %}
+    <a class="product-card premium-card card-tone-{{ (p.id % 4) + 1 }}" href="/products/{{ p.id }}"
+       data-category="{{ p.category }}" data-search="{{ (p.name ~ ' ' ~ p.category ~ ' ' ~ p.description)|lower }}">
+      <div class="product-card-topline"><span class="category-badge">{{ p.category }}</span></div>
+      {% if p.image_path %}
+      <div class="product-thumb"><img src="/product-photos/{{ p.image_path }}" alt="{{ p.name }}" loading="lazy"><span class="thumb-sheen"></span></div>
+      {% else %}
+      <div class="product-thumb thumb-{{ loop.index0 % 6 }}">{{ p.name[0]|upper }}<span class="thumb-sheen"></span></div>
+      {% endif %}
+      <div class="product-card-body">
+        <h3>{{ p.name }}</h3>
+        <p class="desc">{{ p.description[:100] }}{% if p.description|length > 100 %}&hellip;{% endif %}</p>
+        <div class="card-meta"><span class="stars">&#9733;&#9733;&#9733;&#9733;<span class="star-empty">&#9733;</span></span></div>
+        <div class="price-row">
+          <div class="price">${{ "%.2f"|format(p.price_cents / 100) }}</div>
+          <span class="card-arrow">&#8599;</span>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="empty-state search-empty" id="catalog-empty" hidden>
+    <h3>No gadgets found</h3>
+    <p>Try a different search or browse all of the edit.</p>
+    <button class="btn btn-secondary btn-sm" type="button" id="catalog-reset">Reset search</button>
+  </div>
+</section>
+
+<script>
+(function () {
+  const grid = document.getElementById('product-grid');
+  if (!grid) return;
+  const empty = document.getElementById('catalog-empty');
+  const searchInput = document.getElementById('catalog-search');
+  const chips = Array.from(document.querySelectorAll('.category-filter'));
+  const resetBtn = document.getElementById('catalog-reset');
+  const cards = Array.from(grid.querySelectorAll('.product-card'));
+  let activeCategory = 'All';
+
+  function applyFilters() {
+    const q = (searchInput && searchInput.value || '').trim().toLowerCase();
+    let visible = 0;
+    cards.forEach((card) => {
+      const matchesCategory = activeCategory === 'All' || card.dataset.category === activeCategory;
+      const matchesQuery = !q || card.dataset.search.includes(q);
+      const show = matchesCategory && matchesQuery;
+      card.hidden = !show;
+      if (show) visible++;
+    });
+    grid.hidden = visible === 0;
+    if (empty) empty.hidden = visible !== 0;
+  }
+
+  function setActiveChip(category) {
+    activeCategory = category;
+    chips.forEach((chip) => {
+      const isActive = chip.dataset.category === category;
+      chip.classList.toggle('active', isActive);
+      chip.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+  }
+
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      setActiveChip(chip.dataset.category);
+      applyFilters();
+    });
+  });
+
+  if (searchInput) searchInput.addEventListener('input', applyFilters);
+
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      if (searchInput) searchInput.value = '';
+      setActiveChip('All');
+      applyFilters();
+    });
+  }
+})();
+</script>
 {% endblock %}

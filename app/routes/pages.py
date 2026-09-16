@@ -34,7 +34,11 @@ def products():
     rows = query_all(
         "SELECT id, name, category, price_cents, description, image_path FROM products ORDER BY id"
     )
-    return render_template("products.html", user=current_user(), products=rows)
+    category_counts = {}
+    for p in rows:
+        category_counts[p["category"]] = category_counts.get(p["category"], 0) + 1
+    categories = [{"name": name, "count": count} for name, count in category_counts.items()]
+    return render_template("products.html", user=current_user(), products=rows, categories=categories)
 
 
 @bp.route("/products/<int:product_id>")
