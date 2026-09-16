@@ -21,7 +21,7 @@
   if (!form || !input || !log) return;
   const sendBtn = form.querySelector('button');
 
-  const GREETING = "Hi! I'm Shopilot, ShopLite's support assistant. Ask me about your orders, account, or products.";
+  const GREETING = "Hi! I'm the Atelier concierge. Ask me about your orders, account, or the collection.";
   const POLL_INTERVAL_MS = 3000;
   const POLL_MAX_ATTEMPTS = 90; // ~4.5 minutes, comfortably past the app's own Ollama timeout
 
@@ -113,7 +113,7 @@
       // this page will pick up the reply via the pending-reply poll above
       // once it's done, so this message doesn't claim the reply was lost.
       typingEl.remove();
-      appendMessage("Connection interrupted -- Shopilot is likely still working on it. Reload this page in a bit to see the reply.", 'bot');
+      appendMessage("Connection interrupted -- the concierge is likely still working on it. Reload this page in a bit to see the reply.", 'bot');
     } finally {
       setBusy(false);
     }

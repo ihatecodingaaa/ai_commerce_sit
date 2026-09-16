@@ -74,7 +74,7 @@ def cart():
 @bp.route("/support")
 def support():
     """The chat-only support page. Split from ticket submission
-    (/support/tickets) so a customer chatting with Shopilot and a customer
+    (/support/tickets) so a customer chatting with the concierge and a customer
     filling out a ticket form are never fighting for the same page layout
     -- and so neither flow gets tangled up with the other's state.
     """

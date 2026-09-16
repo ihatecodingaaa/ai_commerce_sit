@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ShopLite — "Atelier" design system
+   Atelier — design system
    Quiet-luxury visual language: warm cream surfaces, a single gold accent,
    serif italic display type over a plain sans body. Dark mode follows the
    same mechanism as before: an explicit data-theme attribute (set by
@@ -151,7 +151,7 @@ a { color: var(--text); }
 }
 .nav-inner { width: 100%; max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 1.25rem; }
 .nav .brand { display: flex; align-items: center; gap: 0.55rem; text-decoration: none; flex-shrink: 0; }
-.logo-mark-img { height: 26px; width: auto; display: inline-block; vertical-align: middle; flex-shrink: 0; }
+.brand-mark { display: inline-flex; height: 30px; width: 30px; align-items: center; justify-content: center; border: 1px solid currentColor; border-radius: 50%; font-family: var(--font-serif); font-size: 1.05rem; font-style: italic; line-height: 1; flex-shrink: 0; color: var(--text); }
 .brand-word { font-family: var(--font-serif); font-weight: 600; font-size: 1.15rem; letter-spacing: -0.02em; color: var(--text); }
 .nav-links { display: flex; gap: 0.3rem; flex: 1; align-items: center; }
 .nav-links a {
@@ -522,7 +522,7 @@ form { margin: 0; }
    ========================================================================== */
 .chat-embed { display: flex; flex-direction: column; height: min(720px, 78vh); width: 100%; overflow: hidden; margin-bottom: 1.75rem; box-shadow: var(--shadow-lg); border-radius: var(--radius-lg); }
 .chat-header { background: #1b1b19; color: #f4f1e9; padding: 0.9rem 1.1rem; display: flex; align-items: center; gap: 0.65rem; flex-shrink: 0; }
-.chat-header .chat-avatar { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; }
+.chat-header .ai-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-soft); color: #1b1b19; display: grid; place-items: center; flex-shrink: 0; font-size: 0.95rem; }
 .chat-header strong { font-family: var(--font-serif); font-size: 0.95rem; display: block; }
 .chat-sub { font-size: 0.72rem; opacity: 0.75; display: flex; align-items: center; gap: 0.3rem; }
 .chat-sub .dot { width: 6px; height: 6px; border-radius: 50%; background: #7fa982; }

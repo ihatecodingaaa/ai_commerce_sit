@@ -66,17 +66,17 @@ def seed(conn: sqlite3.Connection):
     # accounts only ever come from seed data, never from a signup form.
     cur.execute(
         "INSERT INTO users (username, email, password_hash, full_name, role, avatar) VALUES (?, ?, ?, ?, 'admin', ?)",
-        ("admin", "admin@shoplite-lab.test", hash_password("AdminLab123!"), "Site Administrator", "robot"),
+        ("admin", "admin@atelier-lab.test", hash_password("AdminLab123!"), "Site Administrator", "robot"),
     )
 
     # ---- Employees (directory only, not login accounts) -----------------
     # `photo` is a filename under app/static/team/ -- placeholders shipped
     # with the repo; see app/static/team/README.md for how to swap them.
     employees = [
-        ("Alice Tan", "Head of Customer Operations", "Customer Operations", "alice.tan@shoplite-lab.test", "alice-tan.jpg"),
-        ("Priya Nair", "Platform Engineer", "Infrastructure", "priya.nair@shoplite-lab.test", "priya-nair.jpg"),
-        ("Marcus Webb", "Site Reliability Engineer", "Infrastructure", "marcus.webb@shoplite-lab.test", "marcus-webb.jpg"),
-        ("Dana Okafor", "Support Team Lead", "Customer Operations", "dana.okafor@shoplite-lab.test", "dana-okafor.svg"),
+        ("Alice Tan", "Head of Customer Operations", "Customer Operations", "alice.tan@atelier-lab.test", "alice-tan.jpg"),
+        ("Priya Nair", "Platform Engineer", "Infrastructure", "priya.nair@atelier-lab.test", "priya-nair.jpg"),
+        ("Marcus Webb", "Site Reliability Engineer", "Infrastructure", "marcus.webb@atelier-lab.test", "marcus-webb.jpg"),
+        ("Dana Okafor", "Support Team Lead", "Customer Operations", "dana.okafor@atelier-lab.test", "dana-okafor.svg"),
     ]
     emp_ids = {}
     for name, title, dept, email, photo in employees:
@@ -201,8 +201,8 @@ def seed(conn: sqlite3.Connection):
     public_kb = [
         ("Shipping times", "Standard shipping takes 3-5 business days within the continental US. Express shipping (1-2 business days) is available at checkout for an additional fee."),
         ("Returns and refunds", "You can return most items within 30 days of delivery for a full refund. Use the 'Buy now' order page or ask this chat to file a refund request for you."),
-        ("Warranty coverage", "All ShopLite pieces are backed by a 1-year workmanship guarantee covering material and construction defects. Wear from everyday use is not covered."),
-        ("Payment methods", "ShopLite accepts major credit cards and ShopLite gift cards. We do not support cryptocurrency payments at this time."),
+        ("Warranty coverage", "All Atelier pieces are backed by a 1-year workmanship guarantee covering material and construction defects. Wear from everyday use is not covered."),
+        ("Payment methods", "Atelier accepts major credit cards and Atelier gift cards. We do not support cryptocurrency payments at this time."),
         ("Updating your account email", "You can update your account email from the Account page. If you no longer have access to your old email, contact support to verify your identity."),
         ("Contacting support", "The fastest way to get help is this support chat -- it can look up your orders and tickets directly. You can also open a ticket from the Support page."),
     ]

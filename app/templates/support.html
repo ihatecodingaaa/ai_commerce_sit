@@ -1,21 +1,21 @@
 {% extends "base.html" %}
-{% block title %}AI Concierge - ShopLite{% endblock %}
+{% block title %}AI Concierge - Atelier{% endblock %}
 {% block content %}
 {% set active = 'chat' %}
 <section class="hero animate-in" style="margin-bottom:1.25rem;">
-  <span class="hero-badge">ShopLite intelligence</span>
+  <span class="hero-badge">Atelier intelligence</span>
   <h1>Meet your <em>concierge.</em></h1>
-  <p>Orders, account questions, product care, gifting -- Shopilot can look most of it up directly. Stay on this page while it replies; a full reply can take a little while to come through.</p>
+  <p>Orders, account questions, product care, gifting -- the concierge can look most of it up directly. Stay on this page while it replies; a full reply can take a little while to come through.</p>
 </section>
 
 {% include "_support_subnav.html" %}
 
 <div class="card chat-embed animate-in">
   <div class="chat-header">
-    <img src="/static/shopilot-icon.svg" alt="" class="chat-avatar">
+    <span class="ai-avatar" aria-hidden="true">&#10024;</span>
     <div>
-      <strong>Shopilot</strong>
-      <div class="chat-sub"><span class="dot"></span> ShopLite AI concierge</div>
+      <strong>Atelier Concierge</strong>
+      <div class="chat-sub"><span class="dot"></span> Online now</div>
     </div>
   </div>
   <div id="chat-log"></div>
