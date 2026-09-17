@@ -134,14 +134,28 @@ def seed(conn: sqlite3.Connection):
     )
 
     # ---- Reviews (legitimate seed reviews) ----------------------------------
-    cur.execute(
-        "INSERT INTO reviews (product_id, user_id, rating, body) VALUES (?, ?, 5, ?)",
-        (product_ids[0], customer_ids["bob.customer"], "Sturdy canvas and the straps haven't stretched at all. Perfect size for groceries and gym clothes alike."),
-    )
-    cur.execute(
-        "INSERT INTO reviews (product_id, user_id, rating, body) VALUES (?, ?, 4, ?)",
-        (product_ids[2], customer_ids["alice.customer"], "Beautiful texture in person, a little smaller than I expected but they look wonderful grouped together on my console table."),
-    )
+    # Every product gets one review from each seeded customer, with mixed
+    # ratings (not all 5-star) so the average-rating display has something
+    # real to compute rather than a uniform ceiling.
+    reviews = [
+        (product_ids[0], "bob.customer", 5, "Sturdy canvas and the straps haven't stretched at all. Perfect size for groceries and gym clothes alike."),
+        (product_ids[0], "alice.customer", 4, "Exactly the everyday tote I was looking for. Structured enough to hold its shape empty, which most totes at this price don't manage."),
+        (product_ids[1], "bob.customer", 5, "Lighter than they look and the hinge closure feels genuinely secure. I've worn them daily for two weeks without any tarnish."),
+        (product_ids[1], "alice.customer", 4, "Gorgeous shine and a good weight to them. Wish they came in a slightly smaller size for everyday wear, but I still reach for these first."),
+        (product_ids[2], "alice.customer", 4, "Beautiful texture in person, a little smaller than I expected but they look wonderful grouped together on my console table."),
+        (product_ids[2], "bob.customer", 5, "The unglazed texture is even better in person. Grouped them on my shelf exactly like the site suggested and it looks intentional, not accidental."),
+        (product_ids[3], "alice.customer", 5, "The leather already has a lovely patina after a month of daily use. Fits my cards and a folded bill without bulk."),
+        (product_ids[3], "bob.customer", 4, "Beautifully made and the stitching is holding up well. Slightly snug for more than four cards but that's exactly the point."),
+        (product_ids[4], "bob.customer", 5, "Layers perfectly with my other pieces and the clasp is easy to manage one-handed."),
+        (product_ids[4], "alice.customer", 3, "Pretty bracelet, but the chain is finer than I expected from the photos -- looks a little delicate for daily wear."),
+        (product_ids[5], "alice.customer", 5, "The scent is subtle, not overpowering, and each stick burns for a good half hour. My favorite part of winding down in the evening now."),
+        (product_ids[5], "bob.customer", 4, "Good quality sticks and a lovely woody scent. Would love a slightly larger box next time."),
+    ]
+    for product_id, username, rating, body in reviews:
+        cur.execute(
+            "INSERT INTO reviews (product_id, user_id, rating, body) VALUES (?, ?, ?, ?)",
+            (product_id, customer_ids[username], rating, body),
+        )
     conn.commit()
 
     # index those seed reviews the same way the app does at runtime

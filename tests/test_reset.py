@@ -9,7 +9,7 @@ def test_reset_restores_known_seed_state(client, alice):
     client.post("/api/cart", json={"product_id": 1, "quantity": 1})
 
     before_reviews = len(query_all("SELECT id FROM reviews"))
-    assert before_reviews >= 3  # 2 seed reviews + the one just added
+    assert before_reviews >= 13  # 12 seed reviews + the one just added
 
     seed_module.main()
 
@@ -20,7 +20,7 @@ def test_reset_restores_known_seed_state(client, alice):
     assert [u["username"] for u in after_users] == ["admin", "alice.customer", "bob.customer"]
 
     after_reviews = query_all("SELECT id FROM reviews")
-    assert len(after_reviews) == 2  # back to exactly the seed reviews
+    assert len(after_reviews) == 12  # back to exactly the seed reviews
 
     inc = query_one("SELECT * FROM tickets WHERE ticket_ref = ?", (TICKET_REF,))
     assert inc is not None
