@@ -3,11 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f6f2">
   <title>{% block title %}Atelier{% endblock %}</title>
   <script>
-    // Runs before CSS paints so there's no flash of the wrong theme.
-    // Only sets an attribute when the visitor has explicitly chosen a
-    // theme before -- otherwise CSS falls through to prefers-color-scheme.
     (function () {
       try {
         var t = localStorage.getItem('theme');
@@ -19,51 +17,52 @@
 </head>
 <body>
   <div class="page-wrap">
+    <div class="topline"><span>Atelier Objects</span><span>Objects with intention · 2026</span></div>
     <header class="nav">
       <div class="nav-inner">
-        <a class="brand" href="/products">
+        <a class="brand" href="/products" aria-label="Atelier home">
           <span class="brand-mark" aria-hidden="true">A</span>
           <span class="brand-word">Atelier</span>
         </a>
-        <nav id="nav-links" class="nav-links">
-          <a href="/products" class="{{ 'active' if request.path.startswith('/products') else '' }}">Shop<span class="nav-link-arrow">&#8599;</span></a>
-          <a href="/about" class="{{ 'active' if request.path == '/about' else '' }}">Our story<span class="nav-link-arrow">&#8599;</span></a>
-          <a href="/support" class="{{ 'active' if request.path.startswith('/support') else '' }}">Support<span class="nav-link-arrow">&#8599;</span></a>
+        <button id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+        <nav id="nav-links" class="nav-links" aria-label="Primary navigation">
+          <a href="/products" class="{{ 'active' if request.path.startswith('/products') else '' }}">Shop</a>
+          <a href="/about" class="{{ 'active' if request.path == '/about' else '' }}">Our story</a>
+          {% if user and user.role != 'admin' %}
+            <a href="/cart" class="{{ 'active' if request.path == '/cart' else '' }}">Bag</a>
+            <a href="/support" class="{{ 'active' if request.path.startswith('/support') else '' }}">Concierge</a>
+          {% endif %}
           {% if user and user.role == 'admin' %}
-            <a href="/admin/products" class="{{ 'active' if request.path.startswith('/admin') else '' }}">Admin<span class="nav-link-arrow">&#8599;</span></a>
+            <a href="/admin/products" class="{{ 'active' if request.path.startswith('/admin') else '' }}">Admin</a>
           {% endif %}
         </nav>
         <div class="auth-area">
-          <a href="/products" class="nav-icon" aria-label="Search" title="Search">&#128269;</a>
           <button class="nav-icon theme-toggle-control" id="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
-            <span class="theme-toggle-icon">&#127769;</span>
+            <span class="theme-toggle-icon">🌙</span>
           </button>
           {% if user %}
-            {% if user.role != 'admin' %}
-            <a href="/cart" class="nav-icon" aria-label="Bag" title="Bag">
-              &#128092;{% if cart_count %}<span class="count-dot">{{ cart_count }}</span>{% endif %}
-            </a>
-            {% endif %}
             <div class="profile-menu" id="profile-menu">
               <button type="button" class="profile-trigger" id="profile-trigger" aria-haspopup="true" aria-expanded="false">
                 <span class="avatar {{ avatar_class(user.avatar) }}">{{ avatar_glyph(user.avatar, user.full_name) }}</span>
                 <span class="profile-trigger-name">{{ user.full_name.split(' ')[0] }}</span>
                 <span class="category-badge">{{ 'Admin' if user.role == 'admin' else 'Customer' }}</span>
-                <span class="profile-caret">&#9662;</span>
+                <span class="profile-caret">⌄</span>
               </button>
               <div class="profile-dropdown" id="profile-dropdown" hidden>
-                <a href="/account" class="profile-dropdown-item">Account</a>
+                <a href="/account" class="profile-dropdown-item">Account overview <span>↗</span></a>
+                <button type="button" class="profile-dropdown-item theme-toggle-control" id="theme-toggle-item">
+                  <span class="theme-toggle-label">Dark mode</span>
+                </button>
                 <div class="profile-dropdown-sep"></div>
                 <form action="/logout" method="post">
-                  <button type="submit" class="profile-dropdown-item profile-dropdown-danger">Log out</button>
+                  <button type="submit" class="profile-dropdown-item profile-dropdown-danger">Log out <span>↗</span></button>
                 </form>
               </div>
             </div>
           {% else %}
             <a href="/login" class="link-btn">Log in</a>
-            <a href="/register" class="btn btn-primary btn-sm nav-join">Create account</a>
+            <a href="/register" class="btn btn-primary btn-sm nav-join">Create account <span>↗</span></a>
           {% endif %}
-          <button id="nav-toggle" class="nav-icon nav-toggle" aria-label="Toggle navigation">&#9776;</button>
         </div>
       </div>
     </header>
@@ -77,10 +76,11 @@
         <div class="footer-brand">
           <span class="brand"><span class="brand-mark" aria-hidden="true">A</span> <span class="brand-word">Atelier</span></span>
           <p class="muted">Considered pieces for the rituals that shape your day.</p>
+          <span class="footer-note">Paris / Everywhere</span>
         </div>
         <div class="footer-col">
           <span class="footer-col-title">Explore</span>
-          <a href="/products">Shop</a>
+          <a href="/products">Shop the edit</a>
           <a href="/about">Our story</a>
           <a href="/support">AI concierge</a>
         </div>
@@ -88,9 +88,15 @@
           <span class="footer-col-title">Care</span>
           <a href="/support">Chat with the concierge</a>
           <a href="/support/tickets">Support tickets</a>
+          <a href="/account">Account</a>
+        </div>
+        <div class="footer-col footer-signup">
+          <span class="footer-col-title">Stay close</span>
+          <p class="muted">A quiet note on new objects, studio stories, and good things worth keeping.</p>
+          <div class="footer-subscribe"><input type="email" placeholder="Email address" aria-label="Email address"><button type="button" onclick="showToast('You are on the list.', 'success')">→</button></div>
         </div>
       </div>
-      <div class="footer-bottom">&copy; 2026 Atelier Objects. All rights reserved.</div>
+      <div class="footer-bottom"><span>&copy; 2026 Atelier Objects</span><span>Designed with intention</span></div>
     </footer>
   </div>
 

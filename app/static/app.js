@@ -1,5 +1,4 @@
-// Shared site chrome: toasts + mobile nav toggle + profile dropdown +
-// dark mode toggle. No app/security logic here.
+// Shared site chrome: toasts, responsive navigation, profile dropdown, and theme toggle.
 (function () {
   function ensureToastStack() {
     let stack = document.getElementById('toast-stack');
@@ -26,11 +25,17 @@
   const toggle = document.getElementById('nav-toggle');
   const links = document.getElementById('nav-links');
   if (toggle && links) {
-    toggle.addEventListener('click', () => links.classList.toggle('open'));
-    links.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => links.classList.remove('open')));
+    toggle.addEventListener('click', () => {
+      const open = !links.classList.contains('open');
+      links.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+    });
+    links.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => {
+      links.classList.remove('open');
+      toggle.setAttribute('aria-expanded', 'false');
+    }));
   }
 
-  // Profile dropdown (nameplate top-right): Account, dark mode, log out.
   const profileMenu = document.getElementById('profile-menu');
   const profileTrigger = document.getElementById('profile-trigger');
   const profileDropdown = document.getElementById('profile-dropdown');
@@ -54,10 +59,6 @@
     });
   }
 
-  // Dark mode: an explicit choice (stored in localStorage) always wins;
-  // otherwise the page already follows prefers-color-scheme via CSS alone.
-  // A standalone nav icon button, shared markup/logic regardless of
-  // logged-in state via the .theme-toggle-control class.
   function effectiveTheme() {
     const explicit = localStorage.getItem('theme');
     if (explicit === 'dark' || explicit === 'light') return explicit;
@@ -72,6 +73,7 @@
         const label = btn.querySelector('.theme-toggle-label');
         if (icon) icon.textContent = dark ? '☀️' : '🌙';
         if (label) label.textContent = dark ? 'Light mode' : 'Dark mode';
+        btn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
       });
     };
     syncControls();

@@ -16,20 +16,6 @@ def create_app() -> Flask:
     app.jinja_env.globals["avatar_glyph"] = avatar_glyph
     app.jinja_env.globals["avatar_class"] = avatar_css_class
 
-    @app.context_processor
-    def inject_cart_count():
-        from app.auth import current_user
-        from app.models.db import query_one
-
-        user = current_user()
-        if not user or user["role"] != "customer":
-            return {"cart_count": 0}
-        row = query_one(
-            "SELECT COALESCE(SUM(quantity), 0) AS n FROM cart_items WHERE user_id = ?",
-            (user["id"],),
-        )
-        return {"cart_count": row["n"] if row else 0}
-
     @app.errorhandler(403)
     def forbidden(_e):
         from app.auth import current_user
