@@ -1,7 +1,8 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}{{ product.name }} - Atelier{% endblock %}
 {% block content %}
-<a href="/products" class="back-link">&larr; Back to the edit</a>
+<a href="/products" class="back-link">{{ icon('arrow-right', 15, 'rotate-180') }} Back to the edit</a>
 
 <div class="detail-grid animate-in">
   {% if product.image_path %}
@@ -22,7 +23,7 @@
         <label style="margin:0">Qty</label>
         <input type="number" id="buy-qty" value="1" min="1">
       </div>
-      <button type="submit" class="btn btn-primary">Add to bag</button>
+      <button type="submit" class="btn btn-primary" id="buy-form-submit">Add to bag {{ icon('shopping-bag', 16) }}</button>
     </form>
     {% elif user and user.role == 'admin' %}
     <p class="muted">Admin accounts manage the catalog but don't place orders. <a href="/admin/products">Edit this product</a>.</p>
@@ -31,9 +32,9 @@
     {% endif %}
 
     <div class="info-box-row">
-      <div class="info-box">&#128666; Complimentary delivery on orders over $150</div>
-      <div class="info-box">&#128260; 30-day returns, no questions asked</div>
-      <div class="info-box">&#10024; Need a second opinion? <a href="/support" style="color:inherit">Ask the concierge</a></div>
+      <div class="info-box">{{ icon('truck', 16) }} Complimentary delivery on orders over $150</div>
+      <div class="info-box">{{ icon('rotate-ccw', 16) }} 30-day returns, no questions asked</div>
+      <div class="info-box">{{ icon('message-square', 16) }} Need a second opinion? <a href="/support" style="color:inherit">Ask the concierge</a></div>
     </div>
   </div>
 </div>
@@ -66,8 +67,8 @@
       <span class="stars review-stars" style="font-size:0.75rem">{{ ('&#9733;' * r.rating) | safe }}{{ ('&#9734;' * (5 - r.rating)) | safe }}</span>
       {% if user and r.user_id == user.id %}
       <div class="review-actions">
-        <button type="button" class="icon-btn edit-review" title="Edit your review" aria-label="Edit review">&#9998;</button>
-        <button type="button" class="icon-btn delete-review" title="Delete your review" aria-label="Delete review">&#128465;</button>
+        <button type="button" class="icon-btn edit-review" title="Edit your review" aria-label="Edit review">{{ icon('pencil', 14) }}</button>
+        <button type="button" class="icon-btn delete-review" title="Delete your review" aria-label="Delete review">{{ icon('trash-2', 14) }}</button>
       </div>
       {% endif %}
     </div>
@@ -79,6 +80,8 @@
 </ul>
 
 <script>
+const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+
 document.getElementById('review-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector('button');
@@ -132,8 +135,8 @@ function enterEditMode(card) {
     </select>
     <textarea class="edit-body" rows="3"></textarea>
     <div class="field-row" style="margin-top:0.5rem">
-      <button type="submit" class="btn btn-primary btn-sm">Save</button>
       <button type="button" class="btn btn-secondary btn-sm cancel-edit">Cancel</button>
+      <button type="submit" class="btn btn-primary btn-sm">Save ${CHECK_ICON}</button>
     </div>
   `;
   form.querySelector('.edit-body').value = currentBody;
@@ -223,6 +226,7 @@ document.getElementById('buy-form')?.addEventListener('submit', async (e) => {
   const btn = e.target.querySelector('button');
   const productId = e.target.dataset.productId;
   const quantity = document.getElementById('buy-qty').value;
+  const originalBtnHtml = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>';
   try {
@@ -240,7 +244,7 @@ document.getElementById('buy-form')?.addEventListener('submit', async (e) => {
     showToast('Network error adding to bag.', 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Add to bag';
+    btn.innerHTML = originalBtnHtml;
   }
 });
 </script>

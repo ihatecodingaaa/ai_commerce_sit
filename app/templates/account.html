@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}Account - Atelier{% endblock %}
 {% block content %}
 <div class="section-heading-row">
   <div><div class="eyebrow">Your Atelier</div><h1 class="page-heading" style="margin-top:0.5rem">Your <em>account.</em></h1></div>
-  <button id="edit-account-toggle" class="btn btn-secondary btn-sm">Edit profile</button>
+  <button id="edit-account-toggle" class="nav-icon" style="position:static" title="Edit profile" aria-label="Edit profile">{{ icon('pencil', 15) }}</button>
 </div>
 
 <div class="card profile-card animate-in">
@@ -61,8 +62,8 @@
     </div>
 
     <div class="field-row" style="margin-top:1.1rem;">
-      <button type="submit" class="btn btn-primary">Save changes</button>
       <button type="button" class="btn btn-secondary" id="cancel-edit-account">Cancel</button>
+      <button type="submit" class="btn btn-primary">Save changes {{ icon('check', 15) }}</button>
     </div>
   </form>
 </div>

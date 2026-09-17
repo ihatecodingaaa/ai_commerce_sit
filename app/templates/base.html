@@ -16,29 +16,28 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  {% from "_icons.html" import icon %}
   <div class="page-wrap">
-    <div class="topline"><span>Atelier Objects</span><span>Objects with intention · 2026</span></div>
     <header class="nav">
       <div class="nav-inner">
         <a class="brand" href="/products" aria-label="Atelier home">
           <span class="brand-mark" aria-hidden="true">A</span>
-          <span class="brand-word">Atelier</span>
         </a>
-        <button id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
         <nav id="nav-links" class="nav-links" aria-label="Primary navigation">
-          <a href="/products" class="{{ 'active' if request.path.startswith('/products') else '' }}">Shop</a>
-          <a href="/about" class="{{ 'active' if request.path == '/about' else '' }}">Our story</a>
+          <a href="/products" class="{{ 'active' if request.path.startswith('/products') else '' }}">Shop<span class="nav-link-arrow">{{ icon('arrow-up-right', 15) }}</span></a>
+          <a href="/about" class="{{ 'active' if request.path == '/about' else '' }}">Our story<span class="nav-link-arrow">{{ icon('arrow-up-right', 15) }}</span></a>
           {% if user and user.role != 'admin' %}
-            <a href="/cart" class="{{ 'active' if request.path == '/cart' else '' }}">Bag</a>
-            <a href="/support" class="{{ 'active' if request.path.startswith('/support') else '' }}">Concierge</a>
+            <a href="/cart" class="{{ 'active' if request.path == '/cart' else '' }}">Bag<span class="nav-link-arrow">{{ icon('arrow-up-right', 15) }}</span></a>
+            <a href="/support" class="{{ 'active' if request.path.startswith('/support') else '' }}">Concierge<span class="nav-link-arrow">{{ icon('arrow-up-right', 15) }}</span></a>
           {% endif %}
           {% if user and user.role == 'admin' %}
-            <a href="/admin/products" class="{{ 'active' if request.path.startswith('/admin') else '' }}">Admin</a>
+            <a href="/admin/products" class="{{ 'active' if request.path.startswith('/admin') else '' }}">Admin<span class="nav-link-arrow">{{ icon('arrow-up-right', 15) }}</span></a>
           {% endif %}
         </nav>
         <div class="auth-area">
+          <a href="/products" class="nav-icon" id="nav-search-btn" aria-label="Search">{{ icon('search', 18) }}</a>
           <button class="nav-icon theme-toggle-control" id="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
-            <span class="theme-toggle-icon">🌙</span>
+            <span class="theme-toggle-icon">{{ icon('moon', 18) }}</span>
           </button>
           {% if user %}
             <div class="profile-menu" id="profile-menu">
@@ -46,23 +45,26 @@
                 <span class="avatar {{ avatar_class(user.avatar) }}">{{ avatar_glyph(user.avatar, user.full_name) }}</span>
                 <span class="profile-trigger-name">{{ user.full_name.split(' ')[0] }}</span>
                 <span class="category-badge">{{ 'Admin' if user.role == 'admin' else 'Customer' }}</span>
-                <span class="profile-caret">⌄</span>
               </button>
               <div class="profile-dropdown" id="profile-dropdown" hidden>
-                <a href="/account" class="profile-dropdown-item">Account overview <span>↗</span></a>
+                <a href="/account" class="profile-dropdown-item">Account overview {{ icon('arrow-up-right', 14) }}</a>
                 <button type="button" class="profile-dropdown-item theme-toggle-control" id="theme-toggle-item">
                   <span class="theme-toggle-label">Dark mode</span>
                 </button>
                 <div class="profile-dropdown-sep"></div>
                 <form action="/logout" method="post">
-                  <button type="submit" class="profile-dropdown-item profile-dropdown-danger">Log out <span>↗</span></button>
+                  <button type="submit" class="profile-dropdown-item">Log out {{ icon('log-out', 14) }}</button>
                 </form>
               </div>
             </div>
           {% else %}
             <a href="/login" class="link-btn">Log in</a>
-            <a href="/register" class="btn btn-primary btn-sm nav-join">Create account <span>↗</span></a>
+            <a href="/register" class="btn btn-primary btn-sm nav-join">Create account {{ icon('arrow-up-right', 14) }}</a>
           {% endif %}
+          {% if user and user.role != 'admin' %}
+          <a href="/cart" class="nav-icon" aria-label="Shopping bag">{{ icon('shopping-bag', 18) }}{% if cart_count and cart_count > 0 %}<span class="count-dot">{{ cart_count }}</span>{% endif %}</a>
+          {% endif %}
+          <button id="nav-toggle" class="nav-icon nav-toggle" aria-label="Toggle navigation" aria-expanded="false">{{ icon('menu', 19) }}</button>
         </div>
       </div>
     </header>

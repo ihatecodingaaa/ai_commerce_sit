@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}Admin - Products - Atelier{% endblock %}
 {% block content %}
 {% set active = 'products' %}
@@ -8,7 +9,7 @@
 {% include "_admin_subnav.html" %}
 <div class="section-heading-row">
   <span></span>
-  <button id="new-product-toggle" class="btn btn-primary btn-sm">+ New product</button>
+  <button id="new-product-toggle" class="btn btn-primary btn-sm">{{ icon('plus', 15) }} Add product</button>
 </div>
 
 <div id="new-product-card" class="card" style="padding:1.1rem 1.25rem; margin-bottom:1.25rem;" hidden>
@@ -32,7 +33,7 @@
     <textarea class="f-description" rows="2" required></textarea>
     <label>Photo <span class="muted" style="font-weight:400">(JPEG, PNG, GIF, or WebP -- optional)</span></label>
     <input type="file" class="f-photo" accept="image/*">
-    <button type="submit" class="btn btn-primary" style="margin-top:0.9rem">Create product</button>
+    <button type="submit" class="btn btn-primary" style="margin-top:0.9rem">Create product {{ icon('check', 15) }}</button>
   </form>
 </div>
 
@@ -55,8 +56,8 @@
         <td class="f-description-cell muted" style="max-width:280px;">{{ p.description[:90] }}{% if p.description|length > 90 %}&hellip;{% endif %}</td>
         <td>
           <div class="field-row" style="gap:0.4rem;">
-            <button type="button" class="icon-btn edit-product" title="Edit">&#9998;</button>
-            <button type="button" class="icon-btn delete-review delete-product" title="Delete">&#128465;</button>
+            <button type="button" class="icon-btn edit-product" title="Edit">{{ icon('pencil', 14) }}</button>
+            <button type="button" class="icon-btn delete-review delete-product" title="Delete">{{ icon('trash-2', 14) }}</button>
           </div>
         </td>
       </tr>
@@ -68,11 +69,15 @@
 </div>
 
 <script>
+const PLUS_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+const X_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+
 const newToggle = document.getElementById('new-product-toggle');
 const newCard = document.getElementById('new-product-card');
 newToggle.addEventListener('click', () => {
   newCard.hidden = !newCard.hidden;
-  newToggle.textContent = newCard.hidden ? '+ New product' : 'Cancel';
+  newToggle.innerHTML = newCard.hidden ? `${PLUS_ICON} Add product` : `${X_ICON} Cancel`;
 });
 
 document.getElementById('new-product-form').addEventListener('submit', async (e) => {
@@ -130,8 +135,8 @@ function rowToEditForm(row) {
     <input type="file" class="e-photo" accept="image/*">
     ${hasPhoto ? '<label class="field-inline" style="margin-top:0.4rem"><input type="checkbox" class="e-remove-photo" style="width:auto"> Remove current photo</label>' : ''}
     <div class="field-row" style="margin-top:0.6rem">
-      <button type="button" class="btn btn-primary btn-sm save-edit">Save</button>
       <button type="button" class="btn btn-secondary btn-sm cancel-row-edit">Cancel</button>
+      <button type="button" class="btn btn-primary btn-sm save-edit">Save ${CHECK_ICON}</button>
     </div>
   `;
   row.appendChild(editCell);

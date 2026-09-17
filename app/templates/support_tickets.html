@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}Support Tickets - Atelier{% endblock %}
 {% block content %}
 {% set active = 'tickets' %}
@@ -15,7 +16,7 @@
     <input id="ticket-subject" type="text" placeholder="Short summary of your issue">
     <label>Details</label>
     <textarea id="ticket-body" rows="3" placeholder="Describe your issue..."></textarea>
-    <button type="submit" class="btn btn-primary" style="margin-top:0.9rem">Submit ticket</button>
+    <button type="submit" class="btn btn-primary" style="margin-top:0.9rem">Submit ticket {{ icon('send', 15) }}</button>
   </form>
 </div>
 

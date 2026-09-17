@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}Admin - Support Tickets - Atelier{% endblock %}
 {% block content %}
 {% set active = 'tickets' %}
@@ -35,7 +36,7 @@
     </div>
     <label>Reply to customer</label>
     <textarea class="ticket-reply-input" rows="2" placeholder="Write a reply the customer will see on their ticket...">{{ t.admin_reply or '' }}</textarea>
-    <button type="button" class="btn btn-primary btn-sm save-ticket" style="margin-top:0.6rem;">Save</button>
+    <button type="button" class="btn btn-primary btn-sm save-ticket" style="margin-top:0.6rem;">Save {{ icon('check', 14) }}</button>
 
     <div class="ticket-screenshot-row" style="margin-top:0.75rem;">
       <label>Attach a screenshot (internal reference)</label>

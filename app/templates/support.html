@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}AI Concierge - Atelier{% endblock %}
 {% block content %}
 {% set active = 'chat' %}
@@ -12,7 +13,7 @@
 
 <div class="card chat-embed animate-in">
   <div class="chat-header">
-    <span class="ai-avatar" aria-hidden="true">&#10024;</span>
+    <span class="ai-avatar" aria-hidden="true">{{ icon('wand-sparkles', 16) }}</span>
     <div>
       <h2>Atelier Concierge</h2>
       <div class="chat-sub"><span class="dot"></span> Online now</div>
@@ -26,7 +27,7 @@
   </div>
   <form id="chat-form">
     <input id="chat-input" type="text" placeholder="Ask about your order, account, or the collection..." autocomplete="off">
-    <button type="submit" aria-label="Send">&#10148;</button>
+    <button type="submit" aria-label="Send">{{ icon('send', 16) }}</button>
   </form>
 </div>
 {% endblock %}

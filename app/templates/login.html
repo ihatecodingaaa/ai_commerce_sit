@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}Log in - Atelier{% endblock %}
 {% block content %}
 <div class="card auth-card">
@@ -12,7 +13,7 @@
     <input type="text" name="username" required autofocus>
     <label>Password</label>
     <input type="password" name="password" required>
-    <button type="submit" class="btn btn-primary btn-block" style="margin-top:1.4rem">Sign in to Atelier</button>
+    <button type="submit" class="btn btn-primary btn-block" style="margin-top:1.4rem">Sign in to Atelier {{ icon('arrow-up-right', 15) }}</button>
   </form>
   <p class="muted" style="margin-top:1.25rem; text-align:center">No account? <a href="/register">Create one</a></p>
 </div>
