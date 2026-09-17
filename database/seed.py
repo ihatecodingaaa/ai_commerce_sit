@@ -92,7 +92,7 @@ def seed(conn: sqlite3.Connection):
     # Fifth element is the filename under database/seed_photos/, copied into
     # PRODUCT_PHOTO_DIR below -- see SEED_PHOTOS_DIR's comment above.
     products = [
-        ("Linden Canvas Tote", "Bags", 12800, "Heavyweight cotton canvas tote with reinforced webbing straps and a boxy, structured base -- built for the studio, the market, and everything in between.", "linden-canvas-tote.jpg"),
+        ("Noir Structured Tote", "Bags", 22800, "A structured tote in smooth, richly finished leather, carried on long knotted straps with a clean, boxy silhouette -- roomy enough for a laptop and the day's essentials without ever losing its shape.", "noir-leather-tote.jpg"),
         ("Halo Gold Hoop Earrings", "Jewelry", 18500, "Sculptural 14k gold-plated hoops with a softly rounded profile, hand-polished for a quiet shine that wears well from morning to evening.", "halo-gold-hoop-earrings.jpg"),
         ("Terra Stoneware Vessel Trio", "Home", 9600, "Three hand-thrown stoneware vessels in a considered trio, left unglazed for a raw, chalky texture that ages beautifully on a shelf or console.", "terra-stoneware-vessel-trio.jpg"),
         ("Journey Leather Card Case", "Travel", 6800, "A slim, full-grain leather card case sized for a passport and the essentials -- hand-stitched edges that break in with wear.", "journey-leather-card-case.jpg"),
@@ -115,7 +115,7 @@ def seed(conn: sqlite3.Connection):
 
     # ---- Orders (seed history for alice.customer) --------------------------
     cur.execute(
-        "INSERT INTO orders (user_id, product_id, quantity, total_cents, status) VALUES (?, ?, 1, 12800, 'delivered')",
+        "INSERT INTO orders (user_id, product_id, quantity, total_cents, status) VALUES (?, ?, 1, 22800, 'delivered')",
         (customer_ids["alice.customer"], product_ids[0]),
     )
     cur.execute(
@@ -138,7 +138,7 @@ def seed(conn: sqlite3.Connection):
     # ratings (not all 5-star) so the average-rating display has something
     # real to compute rather than a uniform ceiling.
     reviews = [
-        (product_ids[0], "bob.customer", 5, "Sturdy canvas and the straps haven't stretched at all. Perfect size for groceries and gym clothes alike."),
+        (product_ids[0], "bob.customer", 5, "The leather is thicker than I expected at this price and the straps haven't stretched at all. Holds a laptop and a change of clothes without looking overstuffed."),
         (product_ids[0], "alice.customer", 4, "Exactly the everyday tote I was looking for. Structured enough to hold its shape empty, which most totes at this price don't manage."),
         (product_ids[1], "bob.customer", 5, "Lighter than they look and the hinge closure feels genuinely secure. I've worn them daily for two weeks without any tarnish."),
         (product_ids[1], "alice.customer", 4, "Gorgeous shine and a good weight to them. Wish they came in a slightly smaller size for everyday wear, but I still reach for these first."),
