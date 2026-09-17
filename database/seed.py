@@ -70,19 +70,21 @@ def seed(conn: sqlite3.Connection):
     )
 
     # ---- Employees (directory only, not login accounts) -----------------
-    # `photo` is a filename under app/static/team/ -- placeholders shipped
-    # with the repo; see app/static/team/README.md for how to swap them.
+    # Priya Nair and Dana Okafor are the two named in passing on /about (the
+    # legitimate recon source for Stage 2 -- see docs/attack-timeline.md);
+    # Alice Tan and Marcus Webb round out the roster but never appear
+    # publicly or as a ticket owner.
     employees = [
-        ("Alice Tan", "Head of Customer Operations", "Customer Operations", "alice.tan@atelier-lab.test", "alice-tan.jpg"),
-        ("Priya Nair", "Platform Engineer", "Infrastructure", "priya.nair@atelier-lab.test", "priya-nair.jpg"),
-        ("Marcus Webb", "Site Reliability Engineer", "Infrastructure", "marcus.webb@atelier-lab.test", "marcus-webb.jpg"),
-        ("Dana Okafor", "Support Team Lead", "Customer Operations", "dana.okafor@atelier-lab.test", "dana-okafor.svg"),
+        ("Alice Tan", "Head of Customer Operations", "Customer Operations", "alice.tan@atelier-lab.test"),
+        ("Priya Nair", "Platform Engineer", "Infrastructure", "priya.nair@atelier-lab.test"),
+        ("Marcus Webb", "Site Reliability Engineer", "Infrastructure", "marcus.webb@atelier-lab.test"),
+        ("Dana Okafor", "Support Team Lead", "Customer Operations", "dana.okafor@atelier-lab.test"),
     ]
     emp_ids = {}
-    for name, title, dept, email, photo in employees:
+    for name, title, dept, email in employees:
         cur.execute(
-            "INSERT INTO employees (name, title, department, email, photo) VALUES (?, ?, ?, ?, ?)",
-            (name, title, dept, email, photo),
+            "INSERT INTO employees (name, title, department, email) VALUES (?, ?, ?, ?)",
+            (name, title, dept, email),
         )
         emp_ids[name] = cur.lastrowid
 

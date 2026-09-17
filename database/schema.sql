@@ -33,16 +33,16 @@ CREATE TABLE users (
 
 -- Internal staff directory. Not a login table -- represents people referenced
 -- by tickets/knowledge-base articles so the attacker has to reason about
--- who owns what, rather than receiving one giant secret blob.
+-- who owns what, rather than receiving one giant secret blob. Two of these
+-- (Priya Nair, Dana Okafor) are named in passing on the public /about page,
+-- which is the only *legitimate* way a visitor learns real staff names --
+-- see docs/attack-timeline.md Stage 2.
 CREATE TABLE employees (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT NOT NULL,
     title       TEXT NOT NULL,
     department  TEXT NOT NULL,
-    email       TEXT NOT NULL,
-    -- Filename under app/static/team/ -- a placeholder shipped with the
-    -- repo; see that directory's README for how to swap in a real photo.
-    photo       TEXT NOT NULL
+    email       TEXT NOT NULL
 );
 
 CREATE TABLE products (

@@ -25,15 +25,20 @@ hashing via Werkzeug, session-based auth.
 
 ## Stage 2 — Reconnaissance
 
-**Has:** visibility into `/about` (staff names/titles), `/products`,
-public reviews, the general shape of the app.
+**Has:** visibility into `/about` (two staff names, named in passing in
+the page copy, not a directory), `/products`, public reviews, the
+general shape of the app.
 **Does not have:** any internal identifiers yet (ticket refs, service
 names) beyond what `/about` and product pages disclose.
-**Mechanism:** ordinary browsing. `/about` intentionally lists staff by
-name/title/department (`database/seed.py`) — this is realistic "who works
-here" content, not a vulnerability by itself, but it gives the student
-names (e.g. Alice Tan) that later appear as ticket owners, which matters
-for Stage 5 reasoning.
+**Mechanism:** ordinary browsing. `/about`'s copy (`app/templates/about.html`)
+mentions two real staff members by name — Priya Nair and Dana Okafor,
+pulled from `database/seed.py`'s `employees` table via `app/routes/pages.py`'s
+`about()` route — as part of an ordinary "who makes this" paragraph, not a
+staff directory or bio grid. This is realistic "who works here" content, not
+a vulnerability by itself, but it gives the student real names that later
+appear as ticket owners (Priya Nair owns the leaked `INC-10493` token-rotation
+ticket; Dana Okafor owns a customer ticket), which matters for Stage 5
+reasoning.
 **Log evidence:** none specific (ordinary page views).
 **Mitigation:** none needed; this is normal public content.
 

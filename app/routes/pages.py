@@ -25,8 +25,14 @@ def product_photo(filename):
 
 @bp.route("/about")
 def about():
-    employees = query_all("SELECT name, title, department, photo FROM employees ORDER BY id")
-    return render_template("about.html", user=current_user(), employees=employees)
+    # Only the two staff named in the page copy itself (see about.html) --
+    # this is the storefront's one legitimate, unauthenticated source of
+    # real staff names, per docs/attack-timeline.md Stage 2.
+    rows = query_all(
+        "SELECT name, title FROM employees WHERE name IN ('Priya Nair', 'Dana Okafor')"
+    )
+    staff = {row["name"]: row for row in rows}
+    return render_template("about.html", user=current_user(), staff=staff)
 
 
 @bp.route("/products")

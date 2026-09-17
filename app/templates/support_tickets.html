@@ -3,61 +3,98 @@
 {% block title %}Support Tickets - Atelier{% endblock %}
 {% block content %}
 {% set active = 'tickets' %}
-<div class="eyebrow">Care, with a human touch</div>
-<h1 class="page-heading" style="margin-top:0.5rem">Open a <em>ticket.</em></h1>
-<p class="muted" style="margin-top:-0.5rem;">Need something a human should look at? Open a ticket below. Prefer a quick answer first? Try the <a href="/support">AI concierge</a>.</p>
+<div class="support-grid animate-in">
+  <div>
+    <div class="eyebrow">Care, with a human touch</div>
+    <h1 class="page-heading" style="margin-top:1rem">How can we<br><em>help?</em></h1>
+    <p class="body-lead" style="margin-top:1.5rem;">Questions about an order, a material, or finding the right gift? Write to us and our team will take it from here.</p>
+    <div style="margin-top:2.5rem;">
+      <a href="/support" class="support-link"><span>{{ icon('sparkles', 16) }}Ask the AI concierge</span>{{ icon('arrow-up-right', 15) }}</a>
+      <a href="mailto:care@atelierobjects.com" class="support-link"><span>{{ icon('mail', 16) }}care@atelierobjects.com</span>{{ icon('arrow-up-right', 15) }}</a>
+      <div class="support-link" style="cursor:default;"><span>{{ icon('clock-3', 16) }}Mon&ndash;Fri &middot; 09:00&ndash;18:00 CET</span></div>
+    </div>
+  </div>
 
-{% include "_support_subnav.html" %}
-
-<div class="card animate-in" style="padding:1.1rem 1.25rem; margin: 0 0 1.75rem; max-width:640px;">
-  <h3 style="margin-bottom:0.75rem">Open a new ticket</h3>
-  <form id="ticket-form">
-    <label>Subject</label>
-    <input id="ticket-subject" type="text" placeholder="Short summary of your issue">
-    <label>Details</label>
-    <textarea id="ticket-body" rows="3" placeholder="Describe your issue..."></textarea>
-    <button type="submit" class="btn btn-primary" style="margin-top:0.9rem">Submit ticket {{ icon('send', 15) }}</button>
+  <form id="ticket-form" class="form-panel">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div class="eyebrow">Open a ticket</div>
+        <h2 style="margin-top:0.75rem; font-family:var(--font-serif); font-size:1.6rem;">Tell us what's on your mind.</h2>
+      </div>
+      <span style="color:var(--accent);">{{ icon('message-square', 22) }}</span>
+    </div>
+    <label class="form-label" style="margin-top:2.25rem;">Subject
+      <input id="ticket-subject" type="text" placeholder="e.g. Question about sizing">
+    </label>
+    <label class="form-label" style="margin-top:1.25rem;">How can we help?
+      <textarea id="ticket-body" rows="4" placeholder="Give us a little context and we'll do the rest." style="min-height:125px;"></textarea>
+    </label>
+    <div style="margin-top:1.25rem; display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+      <p class="muted" style="font-size:0.75rem; line-height:1.4;">By submitting, you agree to receive a reply from our care team.</p>
+      <button type="submit" class="btn btn-primary" style="flex-shrink:0;">Send ticket {{ icon('send', 15) }}</button>
+    </div>
   </form>
 </div>
 
-<div class="section-heading-row"><h2>Your tickets</h2></div>
-{% if tickets %}
-<ul class="ticket-list stagger">
-  {% for t in tickets %}
-  <li class="card ticket-card" data-ticket-id="{{ t.id }}">
-    <div class="ticket-card-head">
-      <div>
-        <strong>{{ t.subject }}</strong>
-        <span class="muted" style="font-size:0.8rem; display:block;">{{ t.ticket_ref }} &middot; opened {{ t.created_at }}</span>
-      </div>
-      <span class="badge badge-{{ t.status }}">{{ t.status.replace('_', ' ') }}</span>
+<div style="margin-top:5rem;">
+  <div style="display:flex; align-items:end; justify-content:space-between; gap:1rem;">
+    <div>
+      <div class="eyebrow">Your support history</div>
+      <h2 class="section-heading" style="margin-top:0.75rem;">Recent conversations</h2>
     </div>
-    <p style="margin:0.6rem 0 0;">{{ t.body }}</p>
-    {% if t.admin_reply %}
-    <div class="ticket-reply">
-      <strong style="font-size:0.82rem;">Support team reply</strong>
-      <p style="margin:0.3rem 0 0;">{{ t.admin_reply }}</p>
-    </div>
-    {% endif %}
+    <span class="badge" style="border:1px solid var(--border); background:transparent;">{{ tickets|length }} ticket{{ '' if tickets|length == 1 else 's' }}</span>
+  </div>
 
-    <div class="ticket-photo-row" style="margin-top:0.75rem;">
-      {% if t.customer_photo_path %}
-      <label>Your attached photo</label>
-      <div style="margin:0.3rem 0;">
-        <img src="/api/tickets/{{ t.id }}/photo" alt="Your ticket attachment" style="max-width:220px; border-radius:var(--radius-sm); border:1px solid var(--border);">
-      </div>
-      {% else %}
-      <label>Attach a photo (optional)</label>
-      <input type="file" class="ticket-photo-input" accept="image/jpeg,image/png,image/gif,image/webp" style="font-size:0.85rem;">
-      <button type="button" class="btn btn-secondary btn-sm upload-ticket-photo" style="margin-top:0.4rem;">Attach photo</button>
-      {% endif %}
-    </div>
-  </li>
-  {% endfor %}
-</ul>
-{% else %}
-<div class="empty-state">No tickets yet.</div>
-{% endif %}
+  {% if tickets %}
+  <div class="data-table-wrap animate-in" style="margin-top:2rem;">
+    <table class="data-table" id="ticket-table">
+      <thead><tr><th>Ticket</th><th>Subject</th><th>Status</th><th>Date</th></tr></thead>
+      <tbody>
+      {% for t in tickets %}
+        <tr class="ticket-row" data-ticket-id="{{ t.id }}">
+          <td class="muted" style="font-family:var(--font-mono); font-size:12px;">{{ t.ticket_ref }}</td>
+          <td><p style="font-weight:500;">{{ t.subject }}</p></td>
+          <td>
+            <span class="status-badge status-{{ t.status.replace('_', '-') }}">
+              {% if t.status == 'resolved' %}{{ icon('check-circle-2', 13) }}{% elif t.status == 'in_progress' %}{{ icon('clock-3', 13) }}{% else %}{{ icon('inbox', 13) }}{% endif %}
+              {{ t.status.replace('_', ' ') }}
+            </span>
+          </td>
+          <td class="muted">{{ t.created_at }}</td>
+        </tr>
+        <tr class="ticket-detail-row" id="ticket-detail-{{ t.id }}" hidden>
+          <td colspan="4">
+            <div class="ticket-detail">
+              <p style="font-size:0.9rem; line-height:1.6;">{{ t.body }}</p>
+              {% if t.admin_reply %}
+              <div class="ticket-reply" style="margin-top:0.9rem;">
+                <strong style="font-size:0.82rem;">Support team reply</strong>
+                <p style="margin:0.3rem 0 0;">{{ t.admin_reply }}</p>
+              </div>
+              {% endif %}
+              <div class="ticket-photo-row" style="margin-top:1rem;">
+                {% if t.customer_photo_path %}
+                <label>Your attached photo</label>
+                <div style="margin:0.3rem 0;">
+                  <img src="/api/tickets/{{ t.id }}/photo" alt="Your ticket attachment" style="max-width:220px; border-radius:var(--radius-sm); border:1px solid var(--border);">
+                </div>
+                {% else %}
+                <label>Attach a photo (optional)</label>
+                <input type="file" class="ticket-photo-input" accept="image/jpeg,image/png,image/gif,image/webp" style="font-size:0.85rem;">
+                <button type="button" class="btn btn-secondary btn-sm upload-ticket-photo" style="margin-top:0.4rem;">Attach photo</button>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state animate-in" style="margin-top:2rem;">No tickets yet.</div>
+  {% endif %}
+</div>
 
 <script>
 document.getElementById('ticket-form')?.addEventListener('submit', async (e) => {
@@ -86,11 +123,19 @@ document.getElementById('ticket-form')?.addEventListener('submit', async (e) => 
   }
 });
 
+document.querySelectorAll('.ticket-row').forEach((row) => {
+  row.addEventListener('click', () => {
+    const detail = document.getElementById(`ticket-detail-${row.dataset.ticketId}`);
+    if (detail) detail.hidden = !detail.hidden;
+  });
+});
+
 document.querySelectorAll('.upload-ticket-photo').forEach((btn) => {
-  btn.addEventListener('click', async () => {
-    const card = btn.closest('.ticket-card');
-    const ticketId = card.dataset.ticketId;
-    const input = card.querySelector('.ticket-photo-input');
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const detail = btn.closest('.ticket-detail-row');
+    const ticketId = detail.id.replace('ticket-detail-', '');
+    const input = detail.querySelector('.ticket-photo-input');
     const file = input.files[0];
     if (!file) {
       showToast('Choose an image file first.', 'error');

@@ -1,83 +1,50 @@
 {% extends "base.html" %}
 {% block title %}About - Atelier{% endblock %}
 {% block content %}
-<section class="hero animate-in">
-  <span class="hero-badge">Our story</span>
-  <h1>The beauty of <em>enough.</em></h1>
-  <p>Fewer, better-made things &mdash; that's the whole pitch, really.</p>
+<section class="animate-in" style="display:grid; gap:3rem; align-items:end; margin-bottom:4rem;">
+  <div>
+    <div class="eyebrow">About Atelier</div>
+    <h1 class="page-heading" style="margin-top:1rem">The beauty of<br><em>enough.</em></h1>
+  </div>
+  <p class="body-lead">We make the things that stay. Objects with a point of view, a sense of place, and the patience to become part of your everyday.</p>
 </section>
 
-<div class="card animate-in" style="padding:1.5rem 1.75rem; margin-bottom:1.5rem;">
-  <h2 style="margin-top:0">How Atelier happened</h2>
-  <p>
-    The whole thing started, as these things often do, with a broken pair of
-    earbuds and a spreadsheet. <strong>Alice Tan</strong> was three weeks into
-    a job she didn't love, running customer support for a company that made
-    her read from a script, when her charging case died for the second time
-    that month. She mentioned it to <strong>Priya Nair</strong> at a Saturday
-    coworking meetup &mdash; the kind with bad coffee and good whiteboards
-    &mdash; and by the end of the afternoon they'd sketched out something
-    neither of them expected to actually build: a small shop that didn't
-    treat "customer support" as an afterthought bolted onto checkout.
-  </p>
-  <p>
-    Priya wrote the first version of the catalog over a long weekend.
-    It had four products, a font nobody liked, and exactly one payment
-    method. It also, crucially, worked. Alice handled every single support
-    email personally for the first six months, which is either a great way
-    to understand your customers or a terrible way to sleep, and honestly it
-    was some of both.
-  </p>
-  <p>
-    <strong>Marcus Webb</strong> joined not long after, mostly because he
-    kept "just taking a look" at why the site fell over every time it got
-    linked from anywhere, and eventually someone pointed out that he'd
-    unofficially been doing the job for a month already. He's been keeping
-    the servers upright ever since, with what he describes as "a healthy
-    amount of paranoia and a slightly less healthy amount of coffee."
-  </p>
-  <p>
-    By the time <strong>Dana Okafor</strong> came on to build out a real
-    support team, Atelier had outgrown the "Alice answers everything
-    personally" model, if only because Alice had started answering things at
-    2am and everyone agreed that needed to stop. Dana's first project was
-    turning six months of Alice's support notes into an actual knowledge
-    base &mdash; the same one, more or less, that the AI concierge on this
-    site still searches today.
-  </p>
-  <p>
-    Along the way the catalog changed more than the founders expected --
-    fewer gadgets, more of the small, well-made things people actually keep:
-    a considered bag, a piece of jewelry, a set of objects for the shelf.
-    Same four people, still arguing about cable management. Some things
-    don't change.
-  </p>
-</div>
-
-<div class="card animate-in" style="padding:1.5rem 1.75rem; margin-bottom:1.5rem;">
-  <h2 style="margin-top:0">Milestones</h2>
-  <ul class="employee-list">
-    <li><span class="category-badge" style="flex-shrink:0">2019</span> <div>Atelier ships with four products and one very tired founder answering every email.</div></li>
-    <li><span class="category-badge" style="flex-shrink:0">2020</span> <div>Marcus formally joins as the site stops falling over quite so often.</div></li>
-    <li><span class="category-badge" style="flex-shrink:0">2021</span> <div>Dana builds the first real knowledge base out of a year of support notes.</div></li>
-    <li><span class="category-badge" style="flex-shrink:0">2025</span> <div>The catalog turns toward fewer, better-made things -- bags, jewelry, objects for home.</div></li>
-    <li><span class="category-badge" style="flex-shrink:0">Today</span> <div>Still a small team, still answering questions &mdash; now with an AI concierge to help.</div></li>
-  </ul>
-</div>
-
-<h2 style="margin-top:2rem">Our team</h2>
-<div class="team-grid stagger">
-  {% for e in employees %}
-  <div class="card team-card">
-    <div class="team-card-photo">
-      <img src="/static/team/{{ e.photo }}" alt="{{ e.name }}" loading="lazy">
-    </div>
-    <div class="team-card-body">
-      <strong>{{ e.name }}</strong>
-      <span class="muted" style="font-size:0.82rem">{{ e.title }}</span>
-      <span class="category-badge" style="margin-top:0.4rem">{{ e.department }}</span>
+<div class="about-split animate-in">
+  <div class="about-image">
+    <img src="/product-photos/terra-stoneware-vessel-trio.jpg" alt="Dark stone and brass objects">
+  </div>
+  <div class="about-copy">
+    <div class="eyebrow">Our point of view</div>
+    <h2 class="section-heading" style="margin-top:1rem">Less, but better considered.</h2>
+    <p style="margin-top:1.5rem; font-size:0.95rem; line-height:1.75; color:var(--text-muted);">Atelier began with a simple question: what would it look like to buy fewer things, and feel more connected to them? We work with small workshops, natural materials, and silhouettes that don't ask to be replaced every season.</p>
+    <p style="margin-top:1.25rem; font-size:0.95rem; line-height:1.75; color:var(--text-muted);">Every piece is designed in our studio and refined in conversation with the people who make it{% if staff.get('Priya Nair') and staff.get('Dana Okafor') %} &mdash; from {{ staff['Priya Nair'].name }}'s small platform team keeping the shop itself running, to {{ staff['Dana Okafor'].name }}'s care team on the other end of your questions{% endif %}. The result is a collection that feels quiet at first, then becomes familiar.</p>
+    <div style="margin-top:2.25rem; display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; border-top:1px solid var(--border); padding-top:1.5rem;">
+      <div>
+        <p class="stat-number">14</p>
+        <p class="muted" style="margin-top:0.25rem; font-size:0.75rem;">small-run makers</p>
+      </div>
+      <div>
+        <p class="stat-number">01</p>
+        <p class="muted" style="margin-top:0.25rem; font-size:0.75rem;">clear design language</p>
+      </div>
     </div>
   </div>
-  {% endfor %}
 </div>
+
+<section class="values-section animate-in">
+  <div style="display:grid; gap:2rem; padding:4rem 0;" class="values-grid">
+    {% set values = [
+      ('01', 'Material honesty', 'We choose materials for how they age, not how they photograph.'),
+      ('02', 'Human scale', 'Small runs let us listen, refine, and keep quality close.'),
+      ('03', 'Long aftercare', 'The relationship doesn\'t end at checkout.'),
+    ] %}
+    {% for num, title, text in values %}
+    <div class="value-card">
+      <span class="micro-label">{{ num }}</span>
+      <h3><em>{{ title }}</em></h3>
+      <p>{{ text }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
 {% endblock %}

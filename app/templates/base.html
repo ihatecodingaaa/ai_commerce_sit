@@ -27,12 +27,10 @@
         <nav id="nav-links" class="nav-links" aria-label="Primary navigation">
           <a href="/products" class="{{ 'active' if request.path.startswith('/products') else '' }}">Shop<span class="nav-link-arrow">{{ icon('arrow-up-right', 15) }}</span></a>
           <a href="/about" class="{{ 'active' if request.path == '/about' else '' }}">Our story<span class="nav-link-arrow">{{ icon('arrow-up-right', 15) }}</span></a>
-          {% if user and user.role != 'admin' %}
-            <a href="/cart" class="{{ 'active' if request.path == '/cart' else '' }}">Bag<span class="nav-link-arrow">{{ icon('arrow-up-right', 15) }}</span></a>
-            <a href="/support" class="{{ 'active' if request.path.startswith('/support') else '' }}">Concierge<span class="nav-link-arrow">{{ icon('arrow-up-right', 15) }}</span></a>
-          {% endif %}
           {% if user and user.role == 'admin' %}
             <a href="/admin/products" class="{{ 'active' if request.path.startswith('/admin') else '' }}">Admin<span class="nav-link-arrow">{{ icon('arrow-up-right', 15) }}</span></a>
+          {% else %}
+            <a href="/support" class="{{ 'active' if request.path.startswith('/support') else '' }}">Support<span class="nav-link-arrow">{{ icon('arrow-up-right', 15) }}</span></a>
           {% endif %}
         </nav>
         <div class="auth-area">
@@ -60,7 +58,7 @@
             <a href="/login" class="link-btn">Log in</a>
             <a href="/register" class="btn btn-primary btn-sm nav-join">Create account {{ icon('arrow-up-right', 14) }}</a>
           {% endif %}
-          {% if user and user.role != 'admin' %}
+          {% if not user or user.role != 'admin' %}
           <a href="/cart" class="nav-icon" aria-label="Shopping bag">{{ icon('shopping-bag', 18) }}{% if cart_count and cart_count > 0 %}<span class="count-dot">{{ cart_count }}</span>{% endif %}</a>
           {% endif %}
           <button id="nav-toggle" class="nav-icon nav-toggle" aria-label="Toggle navigation" aria-expanded="false">{{ icon('menu', 19) }}</button>
