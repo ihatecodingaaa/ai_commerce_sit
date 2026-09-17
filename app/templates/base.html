@@ -22,6 +22,7 @@
       <div class="nav-inner">
         <a class="brand" href="/products" aria-label="Atelier home">
           <span class="brand-mark" aria-hidden="true">A</span>
+          <span class="brand-word">Atelier</span>
         </a>
         <nav id="nav-links" class="nav-links" aria-label="Primary navigation">
           <a href="/products" class="{{ 'active' if request.path.startswith('/products') else '' }}">Shop<span class="nav-link-arrow">{{ icon('arrow-up-right', 15) }}</span></a>
@@ -41,10 +42,8 @@
           </button>
           {% if user %}
             <div class="profile-menu" id="profile-menu">
-              <button type="button" class="profile-trigger" id="profile-trigger" aria-haspopup="true" aria-expanded="false">
+              <button type="button" class="profile-trigger" id="profile-trigger" aria-haspopup="true" aria-expanded="false" aria-label="Account" title="{{ user.full_name }} ({{ 'Admin' if user.role == 'admin' else 'Customer' }})">
                 <span class="avatar {{ avatar_class(user.avatar) }}">{{ avatar_glyph(user.avatar, user.full_name) }}</span>
-                <span class="profile-trigger-name">{{ user.full_name.split(' ')[0] }}</span>
-                <span class="category-badge">{{ 'Admin' if user.role == 'admin' else 'Customer' }}</span>
               </button>
               <div class="profile-dropdown" id="profile-dropdown" hidden>
                 <a href="/account" class="profile-dropdown-item">Account overview {{ icon('arrow-up-right', 14) }}</a>
