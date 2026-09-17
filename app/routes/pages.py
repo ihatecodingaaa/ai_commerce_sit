@@ -107,7 +107,10 @@ def support_tickets():
 def account():
     user = current_user()
     if not user:
-        return redirect(url_for("auth.login"))
+        # Matches the reference: an unauthenticated visitor sees a
+        # "sign in or create an account" prompt in place of the page,
+        # not a redirect.
+        return render_template("account.html", user=None, orders=[])
     orders = query_all(
         "SELECT o.id, o.quantity, o.total_cents, o.status, o.created_at, p.name AS product_name "
         "FROM orders o JOIN products p ON p.id = o.product_id "

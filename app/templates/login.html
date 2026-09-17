@@ -2,19 +2,33 @@
 {% from "_icons.html" import icon %}
 {% block title %}Log in - Atelier{% endblock %}
 {% block content %}
-<div class="card auth-card">
-  <div class="accent-bar"></div>
-  <div class="eyebrow">Welcome back</div>
-  <h1>Sign in.</h1>
-  <p class="muted" style="margin-bottom:1.25rem">Access saved orders, tickets, and your concierge conversations.</p>
-  {% if error %}<p class="error">{{ error }}</p>{% endif %}
-  <form method="post" action="/login">
-    <label>Username</label>
-    <input type="text" name="username" required autofocus>
-    <label>Password</label>
-    <input type="password" name="password" required>
-    <button type="submit" class="btn btn-primary btn-block" style="margin-top:1.4rem">Sign in to Atelier {{ icon('arrow-up-right', 15) }}</button>
-  </form>
-  <p class="muted" style="margin-top:1.25rem; text-align:center">No account? <a href="/register">Create one</a></p>
-</div>
+<section class="auth-split animate-in">
+  <div class="auth-visual">
+    <img src="/product-photos/journey-leather-card-case.jpg" alt="Atelier still life">
+    <div class="auth-visual-overlay"></div>
+    <div class="auth-visual-caption">
+      <div class="eyebrow">Atelier members</div>
+      <p>The pieces you choose should remember you.</p>
+    </div>
+  </div>
+  <div class="auth-form-wrap">
+    <div class="eyebrow">Welcome back</div>
+    <h1>Sign in.</h1>
+    <p class="muted" style="margin-top:1.25rem; font-size:0.875rem; line-height:1.6;">Access saved pieces, order history, and your personal support conversations.</p>
+    {% if error %}<p class="error" style="margin-top:1rem;">{{ error }}</p>{% endif %}
+    <form method="post" action="/login" style="margin-top:2.25rem;">
+      <label class="form-label">Username
+        <input type="text" name="username" required autofocus>
+      </label>
+      <div class="auth-password-field" style="margin-top:1rem;">
+        <label class="form-label">Password
+          <input type="password" name="password" placeholder="••••••••" required>
+        </label>
+        <span class="auth-lock-icon">{{ icon('lock-keyhole', 15) }}</span>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:1.75rem;">Sign in to Atelier {{ icon('arrow-up-right', 15) }}</button>
+    </form>
+    <p class="muted" style="margin-top:1.75rem; text-align:center; font-size:0.8rem;">New to Atelier? <a href="/register" style="font-weight:600; color:var(--text); text-decoration:underline;">Create one</a></p>
+  </div>
+</section>
 {% endblock %}

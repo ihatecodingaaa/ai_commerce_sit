@@ -2,23 +2,39 @@
 {% from "_icons.html" import icon %}
 {% block title %}Register - Atelier{% endblock %}
 {% block content %}
-<div class="card auth-card">
-  <div class="accent-bar"></div>
-  <div class="eyebrow">Begin your edit</div>
-  <h1>Create an account.</h1>
-  <p class="muted" style="margin-bottom:1.25rem">Join Atelier to buy, review, and get support.</p>
-  {% if error %}<p class="error">{{ error }}</p>{% endif %}
-  <form method="post" action="/register">
-    <label>Full name</label>
-    <input type="text" name="full_name" required autofocus>
-    <label>Username</label>
-    <input type="text" name="username" required>
-    <label>Email</label>
-    <input type="email" name="email" required>
-    <label>Password</label>
-    <input type="password" name="password" required>
-    <button type="submit" class="btn btn-primary btn-block" style="margin-top:1.4rem">Create my account {{ icon('arrow-up-right', 15) }}</button>
-  </form>
-  <p class="muted" style="margin-top:1.25rem; text-align:center">Already have an account? <a href="/login">Sign in</a></p>
-</div>
+<section class="auth-split animate-in">
+  <div class="auth-visual">
+    <img src="/product-photos/journey-leather-card-case.jpg" alt="Atelier still life">
+    <div class="auth-visual-overlay"></div>
+    <div class="auth-visual-caption">
+      <div class="eyebrow">Atelier members</div>
+      <p>The pieces you choose should remember you.</p>
+    </div>
+  </div>
+  <div class="auth-form-wrap">
+    <div class="eyebrow">Begin your edit</div>
+    <h1>Create an account.</h1>
+    <p class="muted" style="margin-top:1.25rem; font-size:0.875rem; line-height:1.6;">Save your favourites, move faster at checkout, and make the collection yours.</p>
+    {% if error %}<p class="error" style="margin-top:1rem;">{{ error }}</p>{% endif %}
+    <form method="post" action="/register" style="margin-top:2.25rem;">
+      <label class="form-label">Your name
+        <input type="text" name="full_name" placeholder="Avery Morgan" required autofocus>
+      </label>
+      <label class="form-label" style="margin-top:1rem;">Username
+        <input type="text" name="username" required>
+      </label>
+      <label class="form-label" style="margin-top:1rem;">Email address
+        <input type="email" name="email" placeholder="you@example.com" required>
+      </label>
+      <div class="auth-password-field" style="margin-top:1rem;">
+        <label class="form-label">Password
+          <input type="password" name="password" placeholder="••••••••" required>
+        </label>
+        <span class="auth-lock-icon">{{ icon('lock-keyhole', 15) }}</span>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:1.75rem;">Create my account {{ icon('arrow-up-right', 15) }}</button>
+    </form>
+    <p class="muted" style="margin-top:1.75rem; text-align:center; font-size:0.8rem;">Already have an account? <a href="/login" style="font-weight:600; color:var(--text); text-decoration:underline;">Sign in</a></p>
+  </div>
+</section>
 {% endblock %}

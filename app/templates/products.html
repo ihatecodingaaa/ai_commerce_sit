@@ -93,13 +93,10 @@
     <div class="eyebrow">The Atelier concierge</div>
     <h2>A little help finding the right thing.</h2>
     <p>Ask our AI concierge about fit, care, gifting, or building a considered set. It knows the collection by heart.</p>
-    <a href="/support" class="btn btn-primary">Meet the concierge {{ icon('sparkles', 16) }}</a>
+    <a href="/support" class="concierge-cta">Meet the concierge {{ icon('sparkles', 16) }}</a>
   </div>
   <div class="concierge-visual">
-    {% if products and products[2].image_path %}
-    <img src="/product-photos/{{ products[2].image_path }}" alt="">
-    {% endif %}
-    <span class="concierge-icon">{{ icon('sparkles', 18) }}</span>
+    <img src="/product-photos/ember-ritual-incense-set.jpg" alt="Onyx ritual objects">
   </div>
 </section>
 

@@ -22,7 +22,9 @@ def test_login_wrong_password_rejected(client):
     assert resp.status_code == 401
 
 
-def test_account_page_requires_login(client):
+def test_account_page_shows_sign_in_prompt_when_logged_out(client):
+    # Matches the reference: an unauthenticated visitor sees a "sign in or
+    # create an account" prompt in place of the page, not a redirect.
     resp = client.get("/account")
-    assert resp.status_code == 302
-    assert "/login" in resp.headers["Location"]
+    assert resp.status_code == 200
+    assert b"A place for your edit" in resp.data

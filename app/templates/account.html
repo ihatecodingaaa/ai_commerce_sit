@@ -2,6 +2,19 @@
 {% from "_icons.html" import icon %}
 {% block title %}Account - Atelier{% endblock %}
 {% block content %}
+{% if not user %}
+<section class="animate-in" style="display:flex; min-height:520px; align-items:center; justify-content:center; padding:3rem 0; text-align:center;">
+  <div style="max-width:420px;">
+    <div style="margin:0 auto; display:flex; height:64px; width:64px; align-items:center; justify-content:center; border-radius:50%; background:var(--surface-2);">
+      {{ icon('user-round', 24) }}
+    </div>
+    <div class="eyebrow" style="margin-top:2rem;">Your Atelier account</div>
+    <h1 style="margin-top:1rem; font-family:var(--font-serif); font-size:2.4rem;">A place for your edit.</h1>
+    <p class="muted" style="margin-top:1rem; font-size:0.9rem; line-height:1.6;">Sign in to view orders, saved pieces, and support conversations.</p>
+    <a href="/login" class="btn btn-primary" style="margin-top:2rem;">Sign in or create an account {{ icon('arrow-up-right', 15) }}</a>
+  </div>
+</section>
+{% else %}
 <div class="section-heading-row">
   <div><div class="eyebrow">Your Atelier</div><h1 class="page-heading" style="margin-top:0.5rem">Your <em>account.</em></h1></div>
   <button id="edit-account-toggle" class="nav-icon" style="position:static" title="Edit profile" aria-label="Edit profile">{{ icon('pencil', 15) }}</button>
@@ -143,4 +156,5 @@ document.getElementById('edit-account-form').addEventListener('submit', async (e
   }
 });
 </script>
+{% endif %}
 {% endblock %}
