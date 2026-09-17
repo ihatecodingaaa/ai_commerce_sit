@@ -38,6 +38,9 @@
           <button class="nav-icon theme-toggle-control" id="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
             <span class="theme-toggle-icon">{{ icon('moon', 18) }}</span>
           </button>
+          {% if not user or user.role != 'admin' %}
+          <a href="/cart" class="nav-icon" aria-label="Shopping bag">{{ icon('shopping-bag', 18) }}{% if cart_count and cart_count > 0 %}<span class="count-dot">{{ cart_count }}</span>{% endif %}</a>
+          {% endif %}
           {% if user %}
             <div class="profile-menu" id="profile-menu">
               <button type="button" class="profile-trigger" id="profile-trigger" aria-haspopup="true" aria-expanded="false" aria-label="Account" title="{{ user.full_name }} ({{ 'Admin' if user.role == 'admin' else 'Customer' }})">
@@ -56,9 +59,6 @@
             </div>
           {% else %}
             <a href="/account" class="nav-icon" aria-label="Account">{{ icon('user-round', 18) }}</a>
-          {% endif %}
-          {% if not user or user.role != 'admin' %}
-          <a href="/cart" class="nav-icon" aria-label="Shopping bag">{{ icon('shopping-bag', 18) }}{% if cart_count and cart_count > 0 %}<span class="count-dot">{{ cart_count }}</span>{% endif %}</a>
           {% endif %}
           <button id="nav-toggle" class="nav-icon nav-toggle" aria-label="Toggle navigation" aria-expanded="false">{{ icon('menu', 19) }}</button>
         </div>
