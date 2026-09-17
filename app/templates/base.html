@@ -55,8 +55,7 @@
               </div>
             </div>
           {% else %}
-            <a href="/login" class="link-btn">Log in</a>
-            <a href="/register" class="btn btn-primary btn-sm nav-join">Create account {{ icon('arrow-up-right', 14) }}</a>
+            <a href="/account" class="nav-icon" aria-label="Account">{{ icon('user-round', 18) }}</a>
           {% endif %}
           {% if not user or user.role != 'admin' %}
           <a href="/cart" class="nav-icon" aria-label="Shopping bag">{{ icon('shopping-bag', 18) }}{% if cart_count and cart_count > 0 %}<span class="count-dot">{{ cart_count }}</span>{% endif %}</a>
