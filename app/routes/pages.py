@@ -38,7 +38,10 @@ def about():
 @bp.route("/products")
 def products():
     rows = query_all(
-        "SELECT id, name, category, price_cents, description, image_path FROM products ORDER BY id"
+        "SELECT p.id, p.name, p.category, p.price_cents, p.description, p.image_path, "
+        "COALESCE(AVG(r.rating), 0) AS avg_rating, COUNT(r.id) AS review_count "
+        "FROM products p LEFT JOIN reviews r ON r.product_id = p.id "
+        "GROUP BY p.id ORDER BY p.id"
     )
     category_counts = {}
     for p in rows:
@@ -57,7 +60,10 @@ def product_detail(product_id):
         "JOIN users u ON u.id = r.user_id WHERE r.product_id = ? ORDER BY r.created_at DESC",
         (product_id,),
     )
-    return render_template("product_detail.html", user=current_user(), product=product, reviews=reviews)
+    avg_rating = sum(r["rating"] for r in reviews) / len(reviews) if reviews else 0
+    return render_template(
+        "product_detail.html", user=current_user(), product=product, reviews=reviews, avg_rating=avg_rating
+    )
 
 
 @bp.route("/cart")

@@ -13,7 +13,15 @@
   <div>
     <div class="eyebrow">{{ product.category }}</div>
     <h1 style="margin-top:0.5rem">{{ product.name }}</h1>
-    <div class="stars" style="margin-bottom:0.8rem">&#9733;&#9733;&#9733;&#9733;&#9734; <span class="muted" style="font-size:0.85rem">({{ reviews|length }} review{{ '' if reviews|length == 1 else 's' }})</span></div>
+    <div class="stars" style="margin-bottom:0.8rem" id="product-rating">
+      {% if reviews %}
+      {% set filled = avg_rating|round|int %}
+      <span>{{ '★' * filled }}<span class="star-empty">{{ '★' * (5 - filled) }}</span></span>
+      <span class="muted" style="font-size:0.85rem">({{ reviews|length }} review{{ '' if reviews|length == 1 else 's' }})</span>
+      {% else %}
+      <span class="muted" style="font-size:0.85rem">No reviews yet &mdash; be the first to share your thoughts.</span>
+      {% endif %}
+    </div>
     <p>{{ product.description }}</p>
     <div class="price" style="font-size:1.6rem; margin:1rem 0">${{ "%.2f"|format(product.price_cents / 100) }}</div>
 
@@ -112,10 +120,6 @@ document.getElementById('review-form')?.addEventListener('submit', async (e) => 
 // --- Edit / delete your own reviews -------------------------------------
 const reviewList = document.querySelector('.review-list');
 
-function renderStars(rating) {
-  return '★'.repeat(rating) + '☆'.repeat(5 - rating);
-}
-
 function enterEditMode(card) {
   if (card.querySelector('.review-edit-form')) return; // already editing
   const bodyEl = card.querySelector('.review-body-text');
@@ -164,11 +168,8 @@ function enterEditMode(card) {
         body: JSON.stringify({rating, body}),
       });
       if (res.ok) {
-        card.dataset.rating = rating;
-        bodyEl.textContent = body;
-        card.querySelector('.review-stars').innerHTML = renderStars(parseInt(rating, 10));
-        exitEditMode(card);
-        showToast('Review updated.', 'success');
+        showToast('Review updated. Refreshing...', 'success');
+        setTimeout(() => location.reload(), 700);
       } else {
         showToast('Error updating review.', 'error');
         saveBtn.disabled = false;
@@ -202,16 +203,8 @@ reviewList?.addEventListener('click', async (e) => {
     try {
       const res = await fetch(`/api/reviews/${reviewId}`, { method: 'DELETE' });
       if (res.ok) {
-        card.style.transition = 'opacity 180ms ease, transform 180ms ease';
-        card.style.opacity = '0';
-        card.style.transform = 'translateX(-8px)';
-        setTimeout(() => {
-          card.remove();
-          if (!reviewList.querySelector('.review-card')) {
-            reviewList.innerHTML = '<li class="empty-state">No reviews yet &mdash; be the first to share your thoughts.</li>';
-          }
-        }, 180);
-        showToast('Review deleted.', 'success');
+        showToast('Review deleted. Refreshing...', 'success');
+        setTimeout(() => location.reload(), 700);
       } else {
         showToast('Error deleting review.', 'error');
       }

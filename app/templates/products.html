@@ -67,7 +67,15 @@
       <div class="product-card-body">
         <h3>{{ p.name }}</h3>
         <p class="desc">{{ p.description[:90] }}{% if p.description|length > 90 %}&hellip;{% endif %}</p>
-        <div class="card-meta"><span class="stars">&#9733;&#9733;&#9733;&#9733;<span class="star-empty">&#9733;</span></span></div>
+        <div class="card-meta">
+          {% if p.review_count > 0 %}
+          {% set filled = p.avg_rating|round|int %}
+          <span class="stars">{{ '★' * filled }}<span class="star-empty">{{ '★' * (5 - filled) }}</span></span>
+          <span class="muted" style="font-size:11px;">({{ p.review_count }})</span>
+          {% else %}
+          <span class="muted" style="font-size:11px;">No reviews yet</span>
+          {% endif %}
+        </div>
         <div class="price-row">
           <div class="price">${{ "%.2f"|format(p.price_cents / 100) }}</div>
           {% if user and user.role == 'customer' %}
