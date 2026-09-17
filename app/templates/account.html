@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_icons.html" import icon %}
+{% from "_icons.html" import icon, avatar_content %}
 {% block title %}Account - Atelier{% endblock %}
 {% block content %}
 {% if not user %}
@@ -21,7 +21,7 @@
 </div>
 
 <div class="card profile-card animate-in">
-  <span class="avatar profile-avatar {{ avatar_class(user.avatar) }}">{{ avatar_glyph(user.avatar, user.full_name) }}</span>
+  <span class="avatar profile-avatar {{ avatar_class(user.avatar) }}">{{ avatar_content(user.avatar, user.full_name, 22) }}</span>
   <div>
     <h3 style="margin-bottom:0.15rem">{{ user.full_name }}</h3>
     <span class="muted">@{{ user.username }}</span>
@@ -46,7 +46,7 @@
               data-avatar-key="{{ LETTER_AVATAR_KEY }}" title="Your initial" aria-label="Your initial">{{ user.full_name[0]|upper }}</button>
       {% for a in PRESET_AVATARS %}
       <button type="button" class="avatar avatar-swatch avatar-preset-{{ loop.index0 }} {{ 'selected' if a.key == user.avatar else '' }}"
-              data-avatar-key="{{ a.key }}" title="{{ a.label }}" aria-label="{{ a.label }}">{{ a.emoji }}</button>
+              data-avatar-key="{{ a.key }}" title="{{ a.label }}" aria-label="{{ a.label }}">{{ icon(a.icon, 15) }}</button>
       {% endfor %}
     </div>
 

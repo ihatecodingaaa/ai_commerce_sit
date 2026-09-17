@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_icons.html" import icon %}
+{% from "_icons.html" import icon, avatar_content %}
 {% block title %}{{ product.name }} - Atelier{% endblock %}
 {% block content %}
 <a href="/products" class="back-link">{{ icon('arrow-right', 15, 'rotate-180') }} Back to the edit</a>
@@ -62,7 +62,7 @@
   {% for r in reviews %}
   <li class="review-card" data-review-id="{{ r.id }}" data-rating="{{ r.rating }}">
     <div class="review-head">
-      <span class="avatar {{ avatar_class(r.avatar) }}">{{ avatar_glyph(r.avatar, r.username) }}</span>
+      <span class="avatar {{ avatar_class(r.avatar) }}">{{ avatar_content(r.avatar, r.username, 14) }}</span>
       <strong>{{ r.username }}</strong>
       <span class="stars review-stars" style="font-size:0.75rem">{{ ('&#9733;' * r.rating) | safe }}{{ ('&#9734;' * (5 - r.rating)) | safe }}</span>
       {% if user and r.user_id == user.id %}

@@ -9,11 +9,11 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.secret_key = config.SECRET_KEY
 
-    from app.avatars import PRESET_AVATARS, LETTER_AVATAR_KEY, avatar_css_class, avatar_glyph
+    from app.avatars import PRESET_AVATARS, LETTER_AVATAR_KEY, avatar_css_class, avatar_icon_name
 
     app.jinja_env.globals["PRESET_AVATARS"] = PRESET_AVATARS
     app.jinja_env.globals["LETTER_AVATAR_KEY"] = LETTER_AVATAR_KEY
-    app.jinja_env.globals["avatar_glyph"] = avatar_glyph
+    app.jinja_env.globals["avatar_icon_name"] = avatar_icon_name
     app.jinja_env.globals["avatar_class"] = avatar_css_class
 
     @app.context_processor

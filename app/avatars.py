@@ -5,8 +5,14 @@ picks a `key` from this list; nothing is ever written to disk on their
 behalf. This keeps the account-editing feature from becoming a second
 file-upload attack surface alongside the two that already exist on
 purpose/by-design (vulnerable/upload/ and app/services/product_photos.py).
-Rendering is pure CSS (gradient class) + a glyph -- no image assets at
-all, so there's nothing to store, serve, or validate as a file.
+Rendering is a monochrome line icon (app/templates/_icons.html, matching
+the storefront's icon language) inside a plain circle -- no image assets
+at all, so there's nothing to store, serve, or validate as a file.
+
+Preset `key`s are the stable, stored identifier (seed data and existing
+accounts reference these) -- only the icon/label shown for each key has
+changed from the original animal-emoji picker to something that fits the
+storefront's quiet-luxury aesthetic.
 
 LETTER_AVATAR_KEY is the classic "first letter of your name on a colored
 circle" look (what every user had before presets existed) -- kept as an
@@ -15,16 +21,16 @@ just want their initial.
 """
 
 PRESET_AVATARS = [
-    {"key": "fox", "emoji": "\U0001F98A", "label": "Fox"},
-    {"key": "panda", "emoji": "\U0001F43C", "label": "Panda"},
-    {"key": "owl", "emoji": "\U0001F989", "label": "Owl"},
-    {"key": "octopus", "emoji": "\U0001F419", "label": "Octopus"},
-    {"key": "unicorn", "emoji": "\U0001F984", "label": "Unicorn"},
-    {"key": "butterfly", "emoji": "\U0001F98B", "label": "Butterfly"},
-    {"key": "penguin", "emoji": "\U0001F427", "label": "Penguin"},
-    {"key": "koala", "emoji": "\U0001F428", "label": "Koala"},
-    {"key": "robot", "emoji": "\U0001F916", "label": "Robot"},
-    {"key": "rocket", "emoji": "\U0001F680", "label": "Rocket"},
+    {"key": "fox", "icon": "leaf", "label": "Leaf"},
+    {"key": "panda", "icon": "feather", "label": "Feather"},
+    {"key": "owl", "icon": "moon", "label": "Moon"},
+    {"key": "octopus", "icon": "star", "label": "Star"},
+    {"key": "unicorn", "icon": "flame", "label": "Flame"},
+    {"key": "butterfly", "icon": "droplet", "label": "Droplet"},
+    {"key": "penguin", "icon": "mountain", "label": "Mountain"},
+    {"key": "koala", "icon": "compass", "label": "Compass"},
+    {"key": "robot", "icon": "sun", "label": "Sun"},
+    {"key": "rocket", "icon": "gem", "label": "Gem"},
 ]
 
 LETTER_AVATAR_KEY = "letter"
@@ -54,9 +60,7 @@ def avatar_css_class(key: str) -> str:
     return "avatar-preset-0"
 
 
-def avatar_glyph(key: str, name: str) -> str:
-    """What to render inside the avatar circle: the preset emoji, or the
-    first letter of `name` for the letter option."""
-    if key == LETTER_AVATAR_KEY:
-        return (name or "?").strip()[:1].upper() or "?"
-    return avatar_by_key(key)["emoji"]
+def avatar_icon_name(key: str) -> str:
+    """The _icons.html icon name for a preset avatar key (used by the
+    avatar_content Jinja macro; irrelevant for the letter avatar)."""
+    return avatar_by_key(key)["icon"]

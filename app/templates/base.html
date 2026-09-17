@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  {% from "_icons.html" import icon %}
+  {% from "_icons.html" import icon, avatar_content %}
   <div class="page-wrap">
     <header class="nav">
       <div class="nav-inner">
@@ -41,7 +41,7 @@
           {% if user %}
             <div class="profile-menu" id="profile-menu">
               <button type="button" class="profile-trigger" id="profile-trigger" aria-haspopup="true" aria-expanded="false" aria-label="Account" title="{{ user.full_name }} ({{ 'Admin' if user.role == 'admin' else 'Customer' }})">
-                <span class="avatar {{ avatar_class(user.avatar) }}">{{ avatar_glyph(user.avatar, user.full_name) }}</span>
+                <span class="avatar {{ avatar_class(user.avatar) }}">{{ avatar_content(user.avatar, user.full_name) }}</span>
               </button>
               <div class="profile-dropdown" id="profile-dropdown" hidden>
                 <a href="/account" class="profile-dropdown-item">Account overview {{ icon('arrow-up-right', 14) }}</a>
