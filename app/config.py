@@ -37,10 +37,27 @@ class Config:
     # depends on (the injection chain requires the model to actually call
     # knowledge_base_search again after reading the planted instruction),
     # so a model that skips tool calls breaks the lab, not just answers
-    # slower. Speed came from OLLAMA_KEEP_ALIVE/NUM_CTX/NUM_PREDICT below
-    # instead, which don't carry this risk.
+    # slower. Re-confirmed again on 2026-09-22 with a live A/B against the
+    # real deployed instance -- 1.5b still just refuses ("I'm sorry, I
+    # can't assist with that") instead of calling any tool. Speed comes
+    # from OLLAMA_KEEP_ALIVE/NUM_PREDICT instead, which don't carry this
+    # risk. Also confirmed the same day, directly against the live model:
+    # the injection chain itself still fires end-to-end on 3b (a
+    # sufficiently assertive planted instruction gets the model to
+    # autonomously call knowledge_base_search again with the attacker's
+    # chosen query) -- this is probabilistic like any LLM instruction-
+    # following, weaker phrasing sometimes gets narrated instead of
+    # executed, which is expected/realistic, not a regression.
+    #
+    # Do NOT change OLLAMA_NUM_CTX casually: Ollama reloads the whole model
+    # with a fresh KV-cache allocation any time a request's num_ctx differs
+    # from what's currently loaded, and on this box's 2 vCPU / ~3.7 GiB RAM
+    # that reload briefly coexisting with the old allocation (or with a
+    # second model loaded for any reason) has been observed to drop
+    # available memory to double digits of MiB. Keep this value stable and
+    # matching whatever the running container actually requests.
     OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
-    OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "60"))
+    OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "100"))
     # How long Ollama keeps the model loaded in memory after a request.
     # Ollama's own default (5m) means any gap longer than that -- a student
     # reading a reply, writing a follow-up, crafting an injected review --
@@ -54,11 +71,20 @@ class Config:
     # a few retrieved KB articles) comfortably fits well under 4096 tokens;
     # letting Ollama fall back to a model's much larger default context
     # allocates a bigger KV-cache than this app ever needs, which costs
-    # real time per generated token on CPU. num_predict keeps a verbose
-    # reply from running long when the system prompt already asks for
-    # "concise" answers but doesn't enforce it.
+    # real time per generated token on CPU.
     OLLAMA_NUM_CTX = int(os.environ.get("OLLAMA_NUM_CTX", "4096"))
-    OLLAMA_NUM_PREDICT = int(os.environ.get("OLLAMA_NUM_PREDICT", "400"))
+    # num_predict is the actual lever that measurably shortens replies: on
+    # this box, CPU token generation runs ~280ms/token regardless of this
+    # cap, so total reply time is roughly linear in how many tokens the
+    # model produces. Measured live (real Ollama, real system prompt/tool
+    # schemas, warm model) on 2026-09-22: a typical "summarize these
+    # reviews" reply used ~90-140 tokens well under either cap, but the
+    # 400-token ceiling meant a verbose reply could still run ~114s of
+    # generation alone. Dropping to 250 caps that worst case at ~70s while
+    # every observed normal-length reply was unaffected (didn't hit the
+    # cap either way) -- unlike swapping to a smaller model, this can't
+    # affect whether tool calls get emitted, only how much prose follows.
+    OLLAMA_NUM_PREDICT = int(os.environ.get("OLLAMA_NUM_PREDICT", "250"))
 
     # The catalog-sync-service credential is NOT a static config value. It
     # is generated at seed time and rotated automatically on a timer -- see
