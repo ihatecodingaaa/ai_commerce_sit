@@ -1,11 +1,13 @@
 # shop-lab application container.
 #
 # Isolation note (see docs/architecture.md): this container is the entire
-# "vulnerable host" for Stages 8-12 (code execution as appuser, local
-# enumeration, privilege escalation to root). Root *inside this container*
-# is a training-lab result, not access to the real EC2 host -- there is no
-# volume, socket, or capability mapping that lets a compromised process here
-# reach the Docker host. Do not add one.
+# "vulnerable host" for the code-execution and privilege-escalation stages
+# (code execution as appuser via either the catalog-sync or admin-session
+# upload path, local enumeration, and the two-hop appuser -> opsuser ->
+# root escalation -- see docs/attack-timeline.md for exact stage numbers).
+# Root *inside this container* is a training-lab result, not access to the
+# real EC2 host -- there is no volume, socket, or capability mapping that
+# lets a compromised process here reach the Docker host. Do not add one.
 FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -24,12 +26,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /opt/shop
 
 # Provision the deliberate local privilege-escalation misconfiguration and
-# the appuser/shopops accounts. Idempotent -- reset_lab.sh re-runs this
-# inside a running container to restore state without rebuilding the image.
-# Creates appuser/shopops, and sets correct ownership on scripts/, flags/,
-# uploads/, database/, and logs/. App source files stay root-owned but
-# world-readable (the default from COPY), which is all appuser needs to run
-# the app -- it must NOT own its own source tree.
+# the appuser/opsuser accounts (two-hop chain, no group membership
+# involved in either hop -- see vulnerable/privilege_escalation/README.md).
+# Idempotent -- reset_lab.sh re-runs this inside a running container to
+# restore state without rebuilding the image. Creates appuser/opsuser, and
+# sets correct ownership on scripts/, flags/, uploads/, database/, and
+# logs/. App source files stay root-owned but world-readable (the default
+# from COPY), which is all appuser needs to run the app -- it must NOT own
+# its own source tree.
 RUN chmod +x /opt/shop/vulnerable/privilege_escalation/setup_privesc.sh \
     && /opt/shop/vulnerable/privilege_escalation/setup_privesc.sh
 

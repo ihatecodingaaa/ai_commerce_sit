@@ -1,12 +1,15 @@
 #!/bin/bash
 # Native (non-Docker) setup for the application + database portion of the
-# lab (Stages 1-7: browsing, chatbot, RAG-based indirect prompt injection,
-# credential disclosure, internal image API). This script deliberately does
-# NOT provision the privilege-escalation misconfiguration (appuser/shopops/
-# sudoers/root flag) -- that only happens inside the Docker app container
-# (see Dockerfile.app and vulnerable/privilege_escalation/), so a compromise
-# of Stages 8-12 never touches your real EC2 host. Use Docker (README.md
-# "Docker setup") to run the full attack chain end to end.
+# lab (Stages 1-6, 8-9: browsing, chatbot, RAG-based indirect prompt
+# injection, both the service-token and misplaced-admin-credential
+# disclosure routes). This script deliberately does NOT provision the
+# privilege-escalation misconfiguration (appuser/opsuser accounts, the
+# leaked-credential log, sudoers, root flag) -- that only happens inside
+# the Docker app container (see Dockerfile.app and
+# vulnerable/privilege_escalation/), so a compromise of the code-execution
+# and privilege-escalation stages never touches your real EC2 host. Use
+# Docker (README.md "Docker setup") to run the full attack chain end to
+# end.
 set -euo pipefail
 
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

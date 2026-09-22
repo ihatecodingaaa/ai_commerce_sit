@@ -29,9 +29,10 @@ Every vulnerability is a real flaw in the actual application architecture
 ## Requirements
 
 - A Linux host for the full attack chain (targets a small EC2 instance: 2
-  vCPU / 4 GiB RAM, no GPU). Stages 1-7 (everything up through internal API
-  access) also work fine on macOS/Windows for development.
-- Docker + Docker Compose (recommended, required for Stages 8-12).
+  vCPU / 4 GiB RAM, no GPU). Stages 1-6 and 8-9 (everything up through
+  credential disclosure and internal API/admin access, either path) also
+  work fine on macOS/Windows for development.
+- Docker + Docker Compose (recommended, required for Stage 7 and 10-15).
 - Python 3.11+ if running natively.
 - [Ollama](https://ollama.com) — CPU-only is fine.
 
@@ -72,8 +73,10 @@ docker compose --profile with-ollama exec ollama ollama pull qwen2.5:3b
 
 ## Quick start (native, no Docker)
 
-Covers **Stages 1-7 only**. The privilege-escalation chain (Stages 8-12)
-is deliberately provisioned only inside the Docker app container, so a
+Covers **Stages 1-6 and 8-9 only** (both credential-disclosure routes and
+internal API/admin access, but not either code-execution route). The
+code-execution and privilege-escalation stages (Stage 7 and 10-15) are
+deliberately provisioned only inside the Docker app container, so a
 compromise never touches your real machine/host — see
 [SECURITY.md](SECURITY.md) and `scripts/setup.sh` for why.
 
@@ -245,15 +248,17 @@ shop-lab/
   deliberate choice for the target hardware (see
   docs/architecture.md#why-keyword-retrieval-instead-of-embeddings); the
   security property being taught is identical either way.
-- The two tests that assert live Linux file permissions
+- The tests that assert live Linux file/account state
   (`tests/test_privilege_escalation.py`) only run inside a provisioned
   container/Linux host, by necessity.
-- Stages 9-12 (post-code-execution) are outside the application's own
-  logging by design (see docs/defensive-controls.md, "Logging and
-  detection integration") — a real deployment needs host-level detection
-  for that range, which this app-only lab does not attempt to simulate.
+- Stages 11-15 (post-code-execution, including both privilege-escalation
+  hops) are outside the application's own logging by design (see
+  docs/defensive-controls.md, "Logging and detection integration") — a
+  real deployment needs host-level detection for that range, which this
+  app-only lab does not attempt to simulate.
 - This was developed and exercised via `pytest` and the Flask dev server on
   a non-Linux development machine; the Docker/Linux-specific portions
-  (Stages 8-12) are implemented per the documented, deterministic design
-  but should be verified end-to-end on the target EC2/Linux environment
-  before classroom use, per the instructor-guide verification checklist.
+  (Stage 7 and 10-15) are implemented per the documented, deterministic
+  design but should be verified end-to-end on the target EC2/Linux
+  environment before classroom use, per the instructor-guide verification
+  checklist.

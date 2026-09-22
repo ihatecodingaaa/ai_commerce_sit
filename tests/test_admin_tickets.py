@@ -5,6 +5,7 @@ reach the admin ticket endpoints.
 """
 import io
 
+from database import seed as seed_module
 from app.models.db import query_one
 
 _PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
@@ -24,14 +25,20 @@ def test_admin_tickets_page_requires_admin(client, alice):
 
 def test_admin_can_view_all_customer_tickets(client):
     ref = _create_ticket_as_alice(client)
-    client.post("/login", data={"username": "admin", "password": "AdminLab123!"})
+    client.post(
+        "/login",
+        data={"username": "admin", "password": seed_module.LAST_SEEDED_ADMIN_PASSWORD},
+    )
     resp = client.get("/admin/tickets")
     assert resp.status_code == 200
     assert ref.encode() in resp.data
 
 
 def test_admin_tickets_view_excludes_internal_tickets(client):
-    client.post("/login", data={"username": "admin", "password": "AdminLab123!"})
+    client.post(
+        "/login",
+        data={"username": "admin", "password": seed_module.LAST_SEEDED_ADMIN_PASSWORD},
+    )
     resp = client.get("/admin/tickets")
     assert b"INC-10493" not in resp.data
     assert b"INC-10480" not in resp.data
@@ -41,7 +48,10 @@ def test_admin_can_update_status_and_reply(client):
     ref = _create_ticket_as_alice(client)
     ticket = query_one("SELECT id FROM tickets WHERE ticket_ref = ?", (ref,))
 
-    client.post("/login", data={"username": "admin", "password": "AdminLab123!"})
+    client.post(
+        "/login",
+        data={"username": "admin", "password": seed_module.LAST_SEEDED_ADMIN_PASSWORD},
+    )
     resp = client.put(
         f"/api/admin/tickets/{ticket['id']}",
         json={"status": "resolved", "admin_reply": "All set, thanks for reaching out!"},
@@ -57,7 +67,10 @@ def test_customer_sees_admin_reply_on_their_ticket_page(client):
     ref = _create_ticket_as_alice(client)
     ticket = query_one("SELECT id FROM tickets WHERE ticket_ref = ?", (ref,))
 
-    client.post("/login", data={"username": "admin", "password": "AdminLab123!"})
+    client.post(
+        "/login",
+        data={"username": "admin", "password": seed_module.LAST_SEEDED_ADMIN_PASSWORD},
+    )
     client.put(f"/api/admin/tickets/{ticket['id']}", json={"status": "in_progress", "admin_reply": "Looking into it."})
 
     client.post("/login", data={"username": "alice.customer", "password": "Customer123!"})
@@ -74,7 +87,10 @@ def test_customer_cannot_update_tickets(client, alice):
 def test_invalid_status_rejected(client):
     ref = _create_ticket_as_alice(client)
     ticket = query_one("SELECT id FROM tickets WHERE ticket_ref = ?", (ref,))
-    client.post("/login", data={"username": "admin", "password": "AdminLab123!"})
+    client.post(
+        "/login",
+        data={"username": "admin", "password": seed_module.LAST_SEEDED_ADMIN_PASSWORD},
+    )
     resp = client.put(f"/api/admin/tickets/{ticket['id']}", json={"status": "not-a-real-status"})
     assert resp.status_code == 400
 
@@ -87,7 +103,10 @@ def test_admin_can_attach_and_fetch_ticket_screenshot(client):
     ref = _create_ticket_as_alice(client)
     ticket = query_one("SELECT id FROM tickets WHERE ticket_ref = ?", (ref,))
 
-    client.post("/login", data={"username": "admin", "password": "AdminLab123!"})
+    client.post(
+        "/login",
+        data={"username": "admin", "password": seed_module.LAST_SEEDED_ADMIN_PASSWORD},
+    )
     resp = client.post(
         f"/api/admin/tickets/{ticket['id']}/screenshot",
         data={"file": (io.BytesIO(_PNG_BYTES), "screenshot.png", "image/png")},
