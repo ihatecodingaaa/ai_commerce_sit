@@ -223,13 +223,22 @@ visibility where feasible.
 (`/etc/sudoers.d/shop-export`) -- and, reading that root-owned but
 world-readable script, that it calls `pickle.load()` on whatever file
 path it's handed with no validation at all (CWE-502).
-**Does not have:** root, or even a stable foothold as `opsuser` yet --
-has to actually build and detonate a malicious pickle
-(`__reduce__` returning `(os.system, (...))`) via
-`sudo -u opsuser /opt/shop/scripts/ticket_export.py <path>`, e.g. to plant
-a setuid `/tmp/opsbash`. `opsuser` itself has no valid password
-(`usermod -L`, see `setup_privesc.sh`) -- this exploit is the *only* way
-to act as that account, not one of several.
+**Does not have:** root yet -- has to actually build and detonate a
+malicious pickle (`__reduce__` returning `(os.system, (...))`) via
+`sudo -u opsuser /opt/shop/scripts/ticket_export.py <path>`. `opsuser`
+itself has no valid password (`usermod -L`, see `setup_privesc.sh`) --
+this exploit is the *only* way to act as that account, not one of
+several. Notably, the payload's `os.system` call is a genuinely
+`opsuser` process (both real and effective UID, since `sudo` performs the
+switch before exec'ing the target) only for the lifetime of that one
+invocation -- a setuid copy of a shell planted for later reuse would only
+ever carry an *effective* `opsuser` identity forward (Linux doesn't let
+an unprivileged process change its own real UID), which is not enough to
+satisfy Stage 12's own `sudo` check. The realistic exploit therefore
+chains straight into Stage 12 from inside this same payload, while it is
+still genuinely `opsuser` -- see
+`vulnerable/privilege_escalation/README.md` for why and the exact
+payload.
 **Mechanism:** deterministic, code-level privilege escalation -- not a
 file-permission bug and not a kernel CVE. See
 `vulnerable/privilege_escalation/README.md` for the exact reproduction

