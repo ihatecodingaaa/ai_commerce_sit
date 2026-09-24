@@ -27,5 +27,4 @@ def test_reset_restores_known_seed_state(client, alice):
     assert inc["visibility"] == "internal"
 
     kb_internal = query_all("SELECT id FROM kb_articles WHERE visibility = 'internal'")
-    assert len(kb_internal) == 4  # image-service overview, catalog-sync overview,
-    # the TICKET_REF token-rotation article, and the INC-10485 admin-credential article
+    assert len(kb_internal) == 3

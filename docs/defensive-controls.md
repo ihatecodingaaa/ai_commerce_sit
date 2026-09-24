@@ -8,9 +8,7 @@ out of the model and into ordinary, testable server-side code — which is
 exactly the pattern already used correctly by `order_lookup`,
 `customer_lookup`, `ticket_search`, and `refund_request` in this repo.
 `knowledge_base_search` is the one tool that doesn't follow that pattern,
-and that single gap is the entire root cause of Stages 4-9 (both the
-service-token leak, Path A, and the misplaced admin-credential leak,
-Path B — same underlying bug, two different secrets it happens to expose).
+and that single gap is the entire root cause of Stages 4-7.
 
 ## 1. Prompt injection defenses
 
@@ -64,20 +62,12 @@ Path B — same underlying bug, two different secrets it happens to expose).
 
 ## 5. Secret isolation
 
-- Stage 8's leak happens because a real secret value was pasted into a
+- Stage 6's leak happens because a real secret value was pasted into a
   human/LLM-readable document (a ticket). In a hardened deployment, that
   document would reference the secret by name only (e.g. "see the
   `catalog-sync-service` entry in the secret manager"), and the actual
   value would live in a secret store the chatbot's tools have no read
   access to at all.
-- Stage 6 is the same root cause with a more serious consequence: the
-  pasted secret there is a real *human account* password, not a scoped
-  service token, so the blast radius of the leak is much larger (a full
-  admin session, not one narrow API route). A hardened deployment would
-  never generate a human-readable password and email/paste it anywhere at
-  all — password resets should be self-service via a signed, single-use
-  link, with no plaintext password ever existing outside the user's own
-  head.
 
 ## 6. Output filtering
 
@@ -103,14 +93,6 @@ Path B — same underlying bug, two different secrets it happens to expose).
   trusted re-encode), never a client-supplied header or filename; store
   uploads under randomly generated names with no attacker-chosen
   extension; serve them with a fixed `Content-Type`.
-- This gap isn't unique to the catalog-sync path (Stage 10): the admin
-  ticket-screenshot upload (Stage 7, `app/routes/api_admin_tickets.py`)
-  shares the exact same internal sink (`app/services/image_client.py` ->
-  `app/routes/api_images.py`) and has *no* filename check of its own at
-  all, only the same Content-Type allowlist. Fixing `image_processor.py`
-  to validate real file content, as above, fixes both call sites at once
-  — a good example of why the fix belongs at the shared sink, not
-  re-implemented per caller.
 
 ## 9. Execution isolation
 
@@ -120,46 +102,54 @@ Path B — same underlying bug, two different secrets it happens to expose).
   process or container with no interpreter/filesystem access beyond the
   one image it's converting).
 
-## 10. Filesystem permissions
+## 10. Safe deserialization
 
-- `vulnerable/privilege_escalation/README.md` covers both hops of the
-  two-tier OS escalation. Hop 1 (Stage 13): never write a real secret
-  (password, token, key) into a log file, even a "temporary" provisioning
-  one — treat every log as something that will eventually be read by
-  someone who shouldn't have the values in it. Hop 2 (Stage 14): any
-  script a sudo rule grants elevated execution of must both (a) be
-  writable only by root, and (b) never pass an unquoted/glob argument
-  straight to a program (`tar`, `chown`, `rsync`, find's `-exec`, ...)
-  that treats certain argument patterns specially — (a) alone is not
-  sufficient, as this lab's redesigned Stage 14 specifically demonstrates.
+- `vulnerable/privilege_escalation/ticket_export.py` (Stage 11, the
+  appuser -> opsuser hop) covers the specific bug: `pickle.load()` on a
+  caller-supplied file path, with no validation of its origin. `pickle`
+  executes arbitrary code embedded in the input via any object's
+  `__reduce__` method — it must never be used on data crossing a trust
+  boundary, including an internal one gated only by a sudo grant. Use a
+  safe, data-only format (JSON, protobuf) for anything read back from a
+  file, cache, or queue that a less-privileged account could have written.
 
-## 11. Service hardening
+## 11. Filesystem permissions
 
-- `appuser` has **no** sudo rights at all — the low tier is a genuinely
-  unprivileged account with nothing to abuse via sudo. `opsuser` (the mid
-  tier) has exactly one scoped sudo rule and no filesystem access outside
-  `/opt/shop`. In production, both accounts should additionally run under
-  a restrictive seccomp/AppArmor profile and without a real login shell,
-  and `opsuser` in particular should never have an interactively-usable
-  password at all (a real "on-call maintenance" account would use
-  short-lived SSH certificates or a bastion, not a static password that
-  can be leaked from a log).
+- `vulnerable/privilege_escalation/README.md` covers the Stage 12 bug
+  (opsuser -> root, a tar wildcard/argument injection). The general
+  principle: any file a sudo rule grants elevated execution of must be
+  writable only by root, full stop, regardless of how narrowly the sudo
+  rule itself is scoped — and even when that principle is followed
+  correctly (as it now is for both `ticket_export.py` and `backup.sh`),
+  a script must still never pass an unquoted/glob argument straight to a
+  program that treats certain argument patterns specially.
 
-## 12. Logging and detection integration
+## 12. Service hardening
+
+- `appuser` has exactly one sudo right (to `ticket_export.py`, as
+  `opsuser`, nothing more), no login shell credentials for anything else,
+  and no filesystem access outside `/opt/shop`. `opsuser` has exactly one
+  sudo right in turn (to `backup.sh`, as root) and **no valid password at
+  all** — the account is locked, so there is no credential to guess, brute
+  -force, or leak; the only way to act as `opsuser` is the Stage 11
+  exploit itself. In production, both accounts should additionally run
+  under a restrictive seccomp/AppArmor profile and without a real login
+  shell.
+
+## 13. Logging and detection integration
 
 - `app/logging_setup.py` writes structured JSON events for the
   security-relevant transitions inside the *application*: logins, chatbot
   requests, tool invocations, KB retrieval (including document
   visibilities), suspicious input patterns, service-token use, image
   uploads, and validation failures. It does **not** — and structurally
-  cannot — see what happens after Stage 11 (arbitrary code execution
+  cannot — see what happens after Stage 9 (arbitrary code execution
   escapes the application's own logging entirely). A real deployment needs
-  host-level detection (auditd, EDR, sudo session logging, `su`/login
-  auditing for the Stage 13 credential-based account switch) to cover
-  Stages 11-15; this lab's application-layer logs are a good example of
+  host-level detection (auditd, EDR, sudo session logging) to cover
+  Stages 9-13; this lab's application-layer logs are a good example of
   *why* that gap matters, not a substitute for it.
 
-## 13. Credential rotation
+## 14. Credential rotation
 
 - The catalog-sync-service token *does* rotate automatically in this lab
   (`app/services/rotation.py`, default every 30 minutes,
@@ -169,7 +159,7 @@ Path B — same underlying bug, two different secrets it happens to expose).
   alone: every rotation still pastes the new plaintext into the INC-10493
   ticket, because the actual defect is *where the secret lives* (a
   human/LLM-readable document), not *how often it changes*. This is
-  deliberate and is the whole lesson of Stage 8 — see "Secret isolation"
+  deliberate and is the whole lesson of Stage 6 — see "Secret isolation"
   above. A production fix needs both: rotate on a schedule/on suspected
   disclosure (already modeled here) *and* stop writing plaintext secrets
   into tickets in the first place (reference by name, store the value only
@@ -180,13 +170,6 @@ Path B — same underlying bug, two different secrets it happens to expose).
   comparison — the same pattern real API-key systems (GitHub, Stripe, etc.)
   use. The vulnerability is entirely in the rotation job's ticket-paste
   step, not in how the credential is stored or checked.
-- The Stage 6 admin password, by contrast, is generated once per seed run
-  and never rotates on any schedule — realistic for a human account (no
-  system auto-rotates a person's password on a timer the way a service
-  token can be), but it also means that leak has no natural expiry the
-  way Stage 8's does. This is exactly why "never paste a human password
-  anywhere" (see "Secret isolation" above) matters even more for account
-  credentials than for already-rotating service tokens.
 
 ## The core takeaway
 

@@ -10,7 +10,7 @@
                                                v
 +---------------------------------------------------------------------------------+
 |  APP CONTAINER  (Docker: shop-lab-app)             == the "vulnerable host" ==  |
-|                                              for the code-exec/privesc stages   |
+|                                                        for Stages 8-13          |
 |  Flask app running as OS user `appuser`                                        |
 |                                                                                  |
 |  routes/  ---->  auth.py (session, require_login)                              |
@@ -44,27 +44,22 @@
 |             |     services/product_photos.py  (sniffs real magic bytes,       |
 |             |        server picks the extension, random filename -- secure)   |
 |             |                                                                  |
-|             +--> api_admin_tickets.py (require_admin -- session DISCOVERABLE  |
-|             |    via Stage 6, a misplaced credential in the DB, not a token)  |
-|             |    --> image_client.py::upload_screenshot --> api_images.py     |
-|             |        above, NO filename check at all on this path (Stage 7)  |
-|             |                                                                  |
 |             +--> api_catalog.py  (X-Catalog-Sync-Token auth -- DISCOVERABLE   |
-|                  via Stage 5/8) --> services/catalog_photos.py (weak ".jpg"   |
+|                  via Stage 5/6) --> services/catalog_photos.py (weak ".jpg"   |
 |                  substring check) --> image_client.py --> api_images.py above |
 |                  -- see "Two ways a product photo reaches the storefront"     |
 |                                                                                  |
 |  models/db.py --> SQLite file at /opt/shop/database/shop_lab.db                |
 |                                                                                  |
 |  -----------------------------------------------------------------------       |
-|  Local host (inside this container only) -- two-hop chain, no shared group:    |
-|    appuser        no sudo rights at all                                        |
-|    /opt/shop/logs/provisioning.log   root:root, mode 644 (bug: leaks opsuser's |
-|                                       password -- appuser reads it, `su`s in)  |
-|    opsuser        NOPASSWD sudo on exactly backup.sh (root:root, mode 750)     |
-|    /opt/shop/backups/staging/        opsuser:opsuser, mode 700 (bug: tar *    |
-|                                       wildcard injection inside backup.sh)     |
-|    /root/final_flag                  root-only                                 |
+|  Local host (inside this container only) -- strict 3-tier chain, no group:     |
+|    appuser        ONE sudo grant: run ticket_export.py as opsuser (NOPASSWD)   |
+|    /opt/shop/scripts/ticket_export.py   root:root, 755 -- pickle.load() bug    |
+|    opsuser        locked account (no password) -- reachable ONLY via that bug  |
+|    opsuser        ONE sudo grant: run backup.sh as root (NOPASSWD)             |
+|    /opt/shop/scripts/backup.sh          root:root, 755 -- tar wildcard bug     |
+|    /opt/shop/backups/staging/           opsuser:opsuser, 700                   |
+|    /root/final_flag                     root-only                              |
 +---------------------------------------------------------------------------------+
                                                |
                                                | HTTP (OLLAMA_URL), no DB/tool access
@@ -98,8 +93,7 @@
    below), and even that only reaches `/api/catalog/products`, never
    `/api/images/*` directly.
 5. **App container <-> EC2 host**: the app container is the entire
-   "vulnerable host" for the code-execution and privilege-escalation
-   stages (see docs/attack-timeline.md). It is a standard Docker container with
+   "vulnerable host" for Stages 8-13. It is a standard Docker container with
    no bind mount into the host filesystem, no `docker.sock`, no
    `--privileged`, and no added capabilities. Root obtained *inside* the
    container via the privilege-escalation chain stays inside the container.
@@ -117,34 +111,29 @@ same `products.image_path` column and render identically on
 
 | | `POST/PUT /api/admin/products` (photo field) | `POST /api/catalog/products` (photo field) |
 |---|---|---|
-| Who can call it | logged-in `role='admin'` users only (`app/auth.py::require_admin`) | anyone with the current `catalog-sync-service` token (discovered via Stage 5/8, not a customer login, not an admin session) |
+| Who can call it | logged-in `role='admin'` users only (`app/auth.py::require_admin`) | anyone with the current `catalog-sync-service` token (discovered via Stage 5/6, not a customer login, not an admin session) |
 | What it's *for* | a human admin managing the catalog by hand | the warehouse/inventory system pushing new products with no human present |
 | File type check | real file content, sniffed by magic bytes -- `app/services/product_photos.py` | whether `.jpg` appears anywhere in the filename -- `app/services/catalog_photos.py` |
 | Stored filename | server-generated `uuid4().hex` + the extension the sniffer determined, never the client's filename | forwarded byte-for-byte, real filename (and extension) intact, to the internal image API below |
 | What happens to the file | served back as raw bytes via `send_from_directory`, never interpreted as anything but image bytes | passed through `app/services/image_client.py` to `POST /api/images/upload` (support-image-service's own, never-disclosed credential -- see `app/services/rotation.py`), where `vulnerable/upload/image_processor.py` may **import and execute** `.py`-named files, before a copy is also saved under `PRODUCT_PHOTO_DIR` so the product still displays normally |
 
-`/api/images/upload` is never directly reachable by an unauthenticated
-outside attacker -- both callers that reach it require a real credential
-first: the catalog-sync-service token (Path A, Stage 8) or an admin
-session (Path B, Stage 6). See `vulnerable/upload/README.md` for the
-deliberate vulnerability itself, and `app/services/product_photos.py` for
-what the *secure* version of the same "let someone upload a file" problem
-looks like, side by side with `app/services/catalog_photos.py`'s weak one.
+`/api/images/upload` itself is not directly reachable by an outside
+attacker in this version of the lab -- see `vulnerable/upload/README.md`
+for the deliberate vulnerability (now reached via the catalog-sync front
+door instead), and `app/services/product_photos.py` for what the *secure*
+version of the same "let someone upload a file" problem looks like, side
+by side with `app/services/catalog_photos.py`'s weak one.
 
-A fourth path exists too: customer ticket-photo attachments (`POST/GET
+A third path exists now too: customer ticket-photo attachments (`POST/GET
 /api/tickets/<id>/photo`, `app/routes/api_support.py`, backed by
 `app/services/ticket_photos.py`). It follows the `product_photos.py`
 pattern exactly (magic-byte sniffing, random filename, its own
 `TICKET_PHOTO_DIR`) and, like admin product photos, never touches
-`api_images.py`/`image_processor.py` at all. The *admin* ticket-screenshot
-path (`POST /api/admin/tickets/<id>/screenshot`, same route file) is
-different: it forwards a file with zero content or filename validation of
-its own straight into `image_client.py` -> `api_images.py` -- see
-`api_images.py`'s docstring. That used to mean "no safe caller reaches
-this route's processing step" as a general design note; since Stage 6
-gives an attacker a real path to an admin session, it is now this lab's
-second concrete route to code execution (Stage 7, Path B), independent of
-Path A's catalog-sync token.
+`api_images.py`/`image_processor.py` at all -- that internal API's own
+processing step has no safe caller (see `api_images.py`'s docstring: even
+the admin ticket-screenshot path forwards a file with zero content
+validation of its own), so nothing customer-reachable should ever be
+routed through it.
 
 ## Why keyword retrieval instead of embeddings
 
@@ -156,7 +145,7 @@ context, no visibility scoping) is identical whether retrieval is done by
 cosine similarity over embeddings or by term overlap. `app/rag/retrieval.py`
 implements simple, deterministic term-overlap scoring instead.
 
-## Data flow for the core vulnerability (Stages 4-5)
+## Data flow for the core vulnerability (Stages 3-6)
 
 ```
 customer review (attacker-controlled text)
@@ -173,10 +162,8 @@ customer asks the chatbot an ordinary question
      as a plain "tool" message, no untrusted-data framing
   -> model follows the embedded instruction, calls knowledge_base_search
      again with attacker-chosen terms
-  -> search_articles(visibility_filter=None) now matches a
-     visibility='internal' article -- which one depends entirely on the
-     injected query: it could be the fake catalog-sync-service token
-     (Stage 8) or the misplaced admin account password (Stage 6)
-  -> the secret appears in the model's context, and (unless the student's
+  -> search_articles(visibility_filter=None) now matches an
+     visibility='internal' article containing the fake service token
+  -> token appears in the model's context, and (unless the student's
      question is filtered) in the chat reply
 ```

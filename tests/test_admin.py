@@ -5,7 +5,6 @@ product delete correctly cascades to its dependent rows.
 import io
 import os
 
-from database import seed as seed_module
 from app.config import config
 from app.models.db import query_all, query_one
 
@@ -98,10 +97,7 @@ def test_deleting_product_cascades_reviews_kb_and_orders(client):
     # One shared test client, logging in as different users at different
     # points -- clearer than stacking fixtures whose login side effects
     # would just overwrite each other's session in an unpredictable order.
-    client.post(
-        "/login",
-        data={"username": "admin", "password": seed_module.LAST_SEEDED_ADMIN_PASSWORD},
-    )
+    client.post("/login", data={"username": "admin", "password": "AdminLab123!"})
     create = client.post(
         "/api/admin/products",
         json={"name": "Cascade Test Product", "category": "Test", "price": 5.0, "description": "for cascade test"},
@@ -124,10 +120,7 @@ def test_deleting_product_cascades_reviews_kb_and_orders(client):
     review_id = review_resp.get_json()["review_id"]
     kb_id = review_resp.get_json()["kb_article_id"]
 
-    client.post(
-        "/login",
-        data={"username": "admin", "password": seed_module.LAST_SEEDED_ADMIN_PASSWORD},
-    )
+    client.post("/login", data={"username": "admin", "password": "AdminLab123!"})
     delete = client.delete(f"/api/admin/products/{product_id}")
     assert delete.status_code == 200
 

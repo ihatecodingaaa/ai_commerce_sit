@@ -4,15 +4,15 @@
 # Intended purpose: archive staged backup files so an on-call engineer
 # (opsuser) can run it without needing full root. Installed with a
 # NOPASSWD sudo rule scoped to exactly this script, granted to opsuser
-# (see vulnerable/privilege_escalation/setup_privesc.sh) -- NOT a blanket
-# `ALL=(ALL) NOPASSWD:ALL` rule, and this file itself is root-owned,
-# mode 750 -- opsuser cannot edit it.
+# only (see vulnerable/privilege_escalation/setup_privesc.sh) -- NOT a
+# blanket `ALL=(ALL) NOPASSWD:ALL` rule, and this file itself is
+# root-owned, mode 755 -- nobody but root can edit it.
 #
 # THE BUG (intentional, for training): CWE-88-style tar wildcard/argument
 # injection (a well-known GTFOBins technique), not a file-permission bug.
 # This script cd's into a directory opsuser legitimately owns and writes
-# to (STAGING_DIR) and archives it with a bare `tar -czf <dest> *`. Because
-# the shell -- not tar -- expands that `*` glob, opsuser can plant
+# to (STAGING_DIR) and archives it with a bare `tar -czf <dest> *`.
+# Because the shell -- not tar -- expands that `*` glob, opsuser can plant
 # filenames in STAGING_DIR that tar's argument parser will interpret as
 # flags instead of file names, e.g. `--checkpoint=1` and
 # `--checkpoint-action=exec=sh payload.sh`. When root's sudo'd tar

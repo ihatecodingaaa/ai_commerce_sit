@@ -22,21 +22,20 @@ local privilege escalation to root. That means, by design, it contains:
    escalate to root *inside its container* — don't let that be the general
    Internet.
 2. **Use the Docker deployment for anything beyond local development.**
-   The vulnerable privilege-escalation chain (Stages 10-15, reachable via
-   either the catalog-sync code-execution route or the admin-credential
-   one, Stage 10-11 or Stage 7) is provisioned only inside the app
-   container (`Dockerfile.app`, `vulnerable/privilege_escalation/`). The
-   container has no bind mount into the host filesystem, no `docker.sock`,
-   `--privileged`, or added capabilities — root obtained inside it stays
-   inside it. Do not add any of those things to `docker-compose.yml`.
+   The vulnerable privilege-escalation chain (Stages 8-13, a single
+   strict path) is provisioned only inside the app container (`Dockerfile.app`,
+   `vulnerable/privilege_escalation/`). The container has no bind mount
+   into the host filesystem, no `docker.sock`, `--privileged`, or added
+   capabilities — root obtained inside it stays inside it. Do not add any
+   of those things to `docker-compose.yml`.
 3. **Run it on a machine you're comfortable being fully compromised.**
    Treat the app container as "already rooted" from the moment it starts —
    because a student succeeding at the exercise is the intended outcome.
    Don't reuse the container/instance for anything else, and don't store
    unrelated data on the same host.
 4. **Dedicate the EC2 instance to this lab.** Don't run other workloads on
-   it. If you use the native (non-Docker) setup for developing Stages 1-6
-   and 8-9, note that it deliberately does **not** provision the
+   it. If you use the native (non-Docker) setup for developing Stages 1-7,
+   note that it deliberately does **not** provision the
    privilege-escalation misconfiguration on the real host (see
    `scripts/setup.sh`) — that only happens inside Docker, on purpose.
 5. **Reset between students/cohorts.** `scripts/reset_lab.sh` returns the
@@ -64,22 +63,21 @@ If you fork or extend this lab:
 
 ## What the vulnerable upload/execution chain can and cannot do
 
-- The code-execution primitive (Stage 10-11, catalog-sync path, or Stage
-  7, admin-credential path) only ever executes inside the app container's
-  own Python process, writing only to `/opt/shop/uploads/images/` unless
-  the payload itself chooses to write elsewhere on that container's
-  filesystem (it has normal `appuser` file permissions, nothing more).
+- The code-execution primitive (Stage 8-9) only ever executes inside the
+  app container's own Python process, writing only to
+  `/opt/shop/uploads/images/` unless the payload itself chooses to write
+  elsewhere on that container's filesystem (it has normal `appuser` file
+  permissions, nothing more).
 - There is no proxy, SSRF-style relay, or "fetch this URL for me" tool
   anywhere in the application that would let a student use this lab to
   attack a third-party host. The chatbot's tools only ever talk to the
   lab's own SQLite database and the lab's own Ollama instance over
   `OLLAMA_URL`.
-- The privilege-escalation chain (Stage 13-14) is a two-hop chain, but
-  each hop is still scoped just as narrowly as before: hop 1 is reading
-  one leaked password from one log file (no code execution or file
-  write involved), and hop 2 is a single, narrow `sudo` rule against one
-  script inside the container — never `ALL=(ALL) NOPASSWD:ALL`, and never
-  anything reaching outside the container's own filesystem.
+- The privilege-escalation chain (Stage 11-12) is a strict two-hop path,
+  each hop scoped to a single, narrow `sudo` rule against one script the
+  invoking account cannot edit — never `ALL=(ALL) NOPASSWD:ALL`, no group
+  membership, no alternate route between hops, and never anything reaching
+  outside the container's own filesystem.
 
 ## Reporting problems with the lab itself
 

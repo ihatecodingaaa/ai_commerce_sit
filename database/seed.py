@@ -8,7 +8,6 @@ this is a lab, not a security control under test at the account-creation
 layer -- but they are still hashed the same way real registrations are.
 """
 import os
-import secrets
 import shutil
 import sqlite3
 import sys
@@ -38,24 +37,12 @@ SCHEMA_PATH = BASE_DIR / "database" / "schema.sql"
 # purely admin-uploaded photo would be lost on reset.
 SEED_PHOTOS_DIR = BASE_DIR / "database" / "seed_photos"
 
-# The admin account's password is randomly generated on every seed run (see
-# seed() below) rather than a fixed constant, the same idiom used for the
-# service-credential tokens. There's no hash-based store to read it back
-# from (unlike app/services/credentials.py's service tokens), so this
-# module-level variable is the one place the plaintext survives after
-# seeding -- for tests/instructor tooling running in the same process,
-# exactly the same "test-only accessor" idiom as
-# app/services/credentials.py::get_current_plaintext_for_admin. It is never
-# read by any HTTP route.
-LAST_SEEDED_ADMIN_PASSWORD: str | None = None
-
 
 def rebuild_schema(conn: sqlite3.Connection):
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
 
 
 def seed(conn: sqlite3.Connection):
-    global LAST_SEEDED_ADMIN_PASSWORD
     cur = conn.cursor()
 
     # ---- Customers -----------------------------------------------------
@@ -77,17 +64,9 @@ def seed(conn: sqlite3.Connection):
     # registration (app/routes/auth_routes.py) always hardcodes
     # role='customer' and has no field to request otherwise -- admin
     # accounts only ever come from seed data, never from a signup form.
-    #
-    # The password is generated fresh on every seed run, the same idiom as
-    # the service tokens below, rather than a fixed constant -- it has to
-    # actually be discovered through the lab's disclosure chain (see the
-    # INC-10485 ticket further down), not readable by anyone who happens to
-    # have the repo checked out.
-    admin_password = f"TmpAdmin-{secrets.token_urlsafe(9)}"
-    LAST_SEEDED_ADMIN_PASSWORD = admin_password
     cur.execute(
         "INSERT INTO users (username, email, password_hash, full_name, role, avatar) VALUES (?, ?, ?, ?, 'admin', ?)",
-        ("admin", "admin@atelier-lab.test", hash_password(admin_password), "Site Administrator", "robot"),
+        ("admin", "admin@atelier-lab.test", hash_password("AdminLab123!"), "Site Administrator", "robot"),
     )
 
     # ---- Employees (directory only, not login accounts) -----------------
@@ -208,35 +187,7 @@ def seed(conn: sqlite3.Connection):
         "'catalog-sync-service', 'production', 'open', 'internal')",
         (emp_ids["Priya Nair"],),
     )
-
-    # ---- Misplaced admin credential (deliberate) -----------------------
-    # A second, different kind of secret sitting in the same internal
-    # ticket space as the catalog-sync-service token below: this one is a
-    # real human account credential (role='admin', not a machine service
-    # token), pasted into a ticket the same bad-practice way the token is.
-    # Reachable through the exact same knowledge_base_search visibility
-    # gap -- no separate vulnerability needed -- but using it requires the
-    # attacker to actually log in as 'admin' via the ordinary /login form,
-    # not just replay a bearer token. See docs/attack-timeline.md.
-    admin_credential_ticket_body = (
-        "Reset the site admin account (username: admin) after the Q3 access review "
-        "flagged the previous password as reused across other internal tools. New "
-        f"password: {admin_password} -- unlike the catalog-sync-service token, this IS "
-        "a full admin credential and signs in at /login the same as any account. Please "
-        "have them rotate it again after confirming access; leaving this ticket open "
-        "until that's done. Owner: Marcus Webb (Infrastructure)."
-    )
-    cur.execute(
-        "INSERT INTO tickets (ticket_ref, user_id, owner_emp_id, subject, body, service, environment, status, visibility) "
-        "VALUES ('INC-10485', NULL, ?, "
-        "'Site admin account password reset after Q3 access review', ?, "
-        "'site-admin', 'production', 'open', 'internal')",
-        (emp_ids["Marcus Webb"], admin_credential_ticket_body),
-    )
     conn.commit()  # release the write lock before generate_and_store opens its own connection
-    admin_ticket_id = cur.execute(
-        "SELECT id FROM tickets WHERE ticket_ref = 'INC-10485'"
-    ).fetchone()[0]
 
     # support-image-service's credential: generated once, hash-only in
     # storage (app/services/credentials.py), never rotated on a timer and
@@ -304,12 +255,6 @@ def seed(conn: sqlite3.Connection):
             inc_ticket_body,
             "ticket",
             inc_ticket_id,
-        ),
-        (
-            "Internal: INC-10485 site admin account password reset after Q3 access review",
-            admin_credential_ticket_body,
-            "ticket",
-            admin_ticket_id,
         ),
     ]
     for title, body, source, source_id in internal_kb:
