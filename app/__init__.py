@@ -8,6 +8,17 @@ from app.config import config
 def create_app() -> Flask:
     app = Flask(__name__)
     app.secret_key = config.SECRET_KEY
+    # SameSite=Lax is a real, non-breaking CSRF mitigation (blocks the
+    # session cookie from riding along on a cross-site POST/fetch, while
+    # still sending it on ordinary top-level navigation) -- found missing
+    # entirely during a hardening pass, not previously set anywhere.
+    # SESSION_COOKIE_SECURE is deliberately left at Flask's default (off):
+    # this lab is documented and used over plain HTTP (native/no-Docker
+    # setup, and the EC2 deployment's port 80) as well as HTTPS, and forcing
+    # Secure here would silently break sessions for anyone following those
+    # documented HTTP instructions rather than actually improving security
+    # in a lab with no real user data to protect in transit.
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
     from app.avatars import PRESET_AVATARS, LETTER_AVATAR_KEY, avatar_css_class, avatar_icon_name
 

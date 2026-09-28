@@ -5,6 +5,8 @@ here should ever be a real credential -- this is a self-contained training
 lab (see SECURITY.md).
 """
 import os
+import secrets
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -12,13 +14,40 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
+# The literal string documented in .env.example as "the placeholder, change
+# this". If a deployment's .env still has it (or SECRET_KEY is unset
+# entirely), Flask would sign session cookies with a value published in this
+# very repo -- anyone who has read .env.example or config.py can forge a
+# session for any user_id, including an admin account, with no interaction
+# with any of the lab's intended vulnerability chain at all. That defeats
+# the lab's single-path design outright, so it is never allowed to reach
+# production use here: falling back to a fresh random key per process is a
+# strictly safer failure mode than a predictable one, even though it means
+# sessions don't survive a restart when an operator forgets to set a real
+# value. Set a real SECRET_KEY in .env for persistent sessions across restarts.
+_DOCUMENTED_PLACEHOLDER_SECRET_KEY = "lab-not-a-real-secret-change-me"
+
 
 def _bool(name: str, default: str = "false") -> bool:
     return os.environ.get(name, default).strip().lower() in ("1", "true", "yes", "on")
 
 
+def _resolve_secret_key() -> str:
+    value = os.environ.get("SECRET_KEY", _DOCUMENTED_PLACEHOLDER_SECRET_KEY)
+    if value == _DOCUMENTED_PLACEHOLDER_SECRET_KEY:
+        print(
+            "[SECURITY WARNING] SECRET_KEY is unset or still the documented "
+            "placeholder value -- generating a random one for this process "
+            "instead of using a predictable, publicly-known key. Set a real "
+            "SECRET_KEY in .env so sessions survive restarts.",
+            file=sys.stderr,
+        )
+        return secrets.token_hex(32)
+    return value
+
+
 class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY", "lab-not-a-real-secret-change-me")
+    SECRET_KEY = _resolve_secret_key()
 
     FLASK_HOST = os.environ.get("FLASK_HOST", "0.0.0.0")
     FLASK_PORT = int(os.environ.get("FLASK_PORT", "5000"))
