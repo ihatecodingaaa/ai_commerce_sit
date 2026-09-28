@@ -2,10 +2,10 @@
 #
 # Isolation note (see docs/architecture.md): this container is the entire
 # "vulnerable host" for the code-execution and privilege-escalation stages
-# (code execution as appuser via the catalog-sync upload path, local
-# enumeration, and the strict two-hop appuser -> opsuser -> root
-# escalation -- see docs/attack-timeline.md for exact stage numbers). This
-# is a single, deterministic path throughout -- no alternate route or
+# (command-injection code execution as appuser via the catalog-sync upload
+# path, local enumeration, and the strict two-hop appuser -> opsuser ->
+# root escalation -- see docs/attack-timeline.md for exact stage numbers).
+# This is a single, deterministic path throughout -- no alternate route or
 # shortcut exists at any stage. Root *inside this container* is a
 # training-lab result, not access to the real EC2 host -- there is no
 # volume, socket, or capability mapping that lets a compromised process
@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         procps \
         libcap2-bin \
+        imagemagick \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/shop

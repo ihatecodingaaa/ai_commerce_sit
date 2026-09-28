@@ -96,37 +96,42 @@ and that single gap is the entire root cause of Stages 4-7.
 
 ## 9. Execution isolation
 
-- The processing stage should never import/execute arbitrary files at all
-  — "load a plugin from the upload directory" is the kind of feature that
-  should not exist without a hard sandbox (a separate, capability-stripped
-  process or container with no interpreter/filesystem access beyond the
-  one image it's converting).
+- Stage 9's bug is CWE-78: `vulnerable/upload/image_processor.py` builds a
+  shell command line by string interpolation with an attacker-influenced
+  filename, run via `subprocess.run(..., shell=True)`. Never build a
+  command this way — use an argument list with no shell involved at all
+  (`subprocess.run([...])`, no `shell=True`), so arguments reach the
+  program directly instead of being re-parsed by a shell that treats `;`,
+  `|`, and backticks specially. Beyond that, any real image-processing
+  step should run in a sandboxed, capability-stripped worker with no
+  shell or interpreter access beyond the one image it's converting.
 
-## 10. Safe deserialization
+## 10. Safe module resolution
 
-- `vulnerable/privilege_escalation/ticket_export.py` (Stage 11, the
-  appuser -> opsuser hop) covers the specific bug: `pickle.load()` on a
-  caller-supplied file path, with no validation of its origin. `pickle`
-  executes arbitrary code embedded in the input via any object's
-  `__reduce__` method — it must never be used on data crossing a trust
-  boundary, including an internal one gated only by a sudo grant. Use a
-  safe, data-only format (JSON, protobuf) for anything read back from a
-  file, cache, or queue that a less-privileged account could have written.
+- `vulnerable/privilege_escalation/archive_worker.py` (Stage 11, the
+  appuser -> opsuser hop) covers the specific bug: inserting a
+  lower-privileged account's writable directory at the front of
+  `sys.path` before a name-based `import`. Whoever controls that
+  directory controls what code runs. Never build a "pluggable handler"
+  feature this way — resolve handlers from a fixed, root-owned registry
+  (an explicit dict of known names to modules, for example), never a
+  writable drop directory, regardless of how narrowly the sudo rule that
+  reaches the script is scoped.
 
-## 11. Filesystem permissions
+## 11. Trusting lower-privileged configuration
 
 - `vulnerable/privilege_escalation/README.md` covers the Stage 12 bug
-  (opsuser -> root, a tar wildcard/argument injection). The general
-  principle: any file a sudo rule grants elevated execution of must be
-  writable only by root, full stop, regardless of how narrowly the sudo
-  rule itself is scoped — and even when that principle is followed
-  correctly (as it now is for both `ticket_export.py` and `backup.sh`),
-  a script must still never pass an unquoted/glob argument straight to a
-  program that treats certain argument patterns specially.
+  (opsuser -> root): a root-run script that's correctly locked down
+  against direct editing (root-owned, mode 755) still `source`s and
+  `eval`s a command from a config file the sudo-permitted account owns.
+  Locking down the *script* is necessary but not sufficient — any file a
+  privileged process reads and acts on (config, environment, cache) must
+  get the same scrutiny as the script itself, or a lower-privileged
+  account can reach the same outcome through the side door.
 
 ## 12. Service hardening
 
-- `appuser` has exactly one sudo right (to `ticket_export.py`, as
+- `appuser` has exactly one sudo right (to `archive_worker.py`, as
   `opsuser`, nothing more), no login shell credentials for anything else,
   and no filesystem access outside `/opt/shop`. `opsuser` has exactly one
   sudo right in turn (to `backup.sh`, as root) and **no valid password at

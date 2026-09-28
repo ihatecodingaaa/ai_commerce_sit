@@ -3,10 +3,10 @@
 Full chain: customer account -> reconnaissance -> AI tool discovery ->
 indirect prompt injection through RAG -> sensitive information disclosure
 -> limited service credential disclosure -> internal API access ->
-vulnerable file upload -> application-user code execution -> local
-enumeration -> privilege escalation, hop 1 (appuser -> opsuser, insecure
-deserialization) -> privilege escalation, hop 2 (opsuser -> root, tar
-wildcard injection) -> root.
+vulnerable file upload -> application-user code execution (OS command
+injection) -> local enumeration -> privilege escalation, hop 1 (appuser ->
+opsuser, Python import-path hijack) -> privilege escalation, hop 2
+(opsuser -> root, config-driven hook injection) -> root.
 
 Each stage gives the attacker exactly one new capability. No stage is a
 "magic endpoint" — every transition is a consequence of a specific,
@@ -162,46 +162,59 @@ services in production.
 
 **Has:** the ability to upload a "product photo" where
 `app/services/catalog_photos.py::looks_like_jpeg_filename` (does the
-filename merely *contain* `.jpg`?) and the processing stage's extension
-check (`vulnerable/upload/image_processor.py`, the *real*, final
-extension) disagree about what's safe — see `vulnerable/upload/README.md`
-for the full validation-layer table. A file named `plugin.jpg.py` passes
-the first check and is executed anyway by the second.
+filename merely *contain* `.jpg`?) only checks a substring, and the
+filename ends in a real image extension so `vulnerable/upload/image_processor.py`
+takes its "generate a thumbnail" path — see `vulnerable/upload/README.md`
+for the full validation-layer table. A filename like
+`x.jpg;id>proof.txt #.jpg` passes both checks while also carrying a shell
+command.
 **Does not have:** code execution yet in this step alone -- forwarding
 into `UPLOAD_DIR` (via `app/services/image_client.py`, using the
 backend's own held support-image-service credential — the attacker's
 catalog-sync-service token never touches that internal call directly) is
 what triggers Stage 9.
-**Mechanism / vulnerability:** CWE-434 (Unrestricted Upload of File with
-Dangerous Type) via signal disagreement between layers — the same
-disagreement class this lab has always taught, just moved one layer
-further from the attacker (`api_catalog.py`'s weak filename substring
-check, not `api_images.py`'s Content-Type check, is now the one an
-outside attacker actually has to satisfy).
+**Mechanism / vulnerability:** CWE-434-adjacent signal disagreement
+between layers (the filename that satisfies `looks_like_jpeg_filename`'s
+substring check is not validated for anything else before reaching a
+shell) — the same disagreement class this lab has always taught, just
+moved one layer further from the attacker (`api_catalog.py`'s weak
+filename substring check, not `api_images.py`'s Content-Type check, is
+now the one an outside attacker actually has to satisfy).
 **Log evidence:** `catalog_sync_product_created` (has_photo=true),
-`image_uploaded` (filename contains `.jpg` but doesn't end with it),
-`image_processing_plugin_load`.
+`image_uploaded`, `image_processing_thumbnail_started`.
 **Mitigation:** validate actual file content, not headers or filenames;
 never derive executable behavior from a filename.
 
-## Stage 9 — Application-user code execution
+## Stage 9 — Application-user code execution (OS command injection)
 
-**Has:** arbitrary Python code execution as `appuser` inside the app
-container, via `image_processor.py::_load_and_run_plugin`
-(`importlib` `exec_module` on the uploaded file).
+**Has:** arbitrary shell code execution as `appuser` inside the app
+container, via `image_processor.py::_generate_thumbnail` interpolating
+the uploaded file's on-disk path directly into a `convert` command line
+run with `subprocess.run(..., shell=True)` — CWE-78. A normal filename
+produces a normal thumbnail; the crafted filename's `;` ends that command
+early and the shell runs whatever follows as a separate command.
 **Does not have:** root. `appuser` is an unprivileged, non-sudo-by-default
-account (only the one scoped rule from Stage 10 exists).
+account (only the one scoped rule from Stage 11 exists). Also doesn't
+have an unconstrained payload: the injected command must avoid literal
+`/` characters, since `api_images.py::_weak_sanitize_filename` runs
+`os.path.basename()` on the client-supplied filename first, which
+truncates anything containing a `/` down to whatever follows the last
+one — a relative-path write lands inside the upload directory instead,
+since `image_processor.py` runs the shell command with that directory as
+its working directory.
 **Mechanism:** demonstrated deterministically in
-`tests/test_catalog_sync.py::test_double_extension_photo_actually_executes`
+`tests/test_catalog_sync.py::test_malicious_filename_actually_executes_via_command_injection`
 (the attacker-reachable path) and
-`tests/test_upload_vuln.py::test_uploaded_py_plugin_actually_executes`
+`tests/test_upload_vuln.py::test_malicious_filename_actually_executes_via_command_injection`
 (the underlying processing bug, in isolation).
-**Log evidence:** `image_processing_plugin_load`; anything the payload
-itself does is, realistically, outside this app's own logging (a real
-detection stack would need host-level EDR/auditd here — see
-docs/defensive-controls.md).
-**Mitigation:** run any real file-processing step in a sandboxed worker
-with no interpreter available; least-privilege the app account.
+**Log evidence:** `image_processing_thumbnail_started`; anything the
+injected command itself does is, realistically, outside this app's own
+logging (a real detection stack would need host-level EDR/auditd here —
+see docs/defensive-controls.md).
+**Mitigation:** never build a shell command line by string interpolation
+with attacker-influenced input; use an argument list with no `shell=True`
+so arguments reach the program directly, never re-parsed by a shell.
+Least-privilege the app account regardless.
 
 ## Stage 10 — Local enumeration
 
@@ -216,68 +229,74 @@ else — there is only one lead to follow, deliberately.
 **Mitigation:** minimize world-readable configuration, restrict `sudo -l`
 visibility where feasible.
 
-## Stage 11 — Privilege escalation, hop 1: appuser -> opsuser (insecure deserialization)
+## Stage 11 — Privilege escalation, hop 1: appuser -> opsuser (Python import-path hijack)
 
 **Has:** discovered `appuser`'s one and only sudo grant --
-`appuser ALL=(opsuser) NOPASSWD: /opt/shop/scripts/ticket_export.py *`
-(`/etc/sudoers.d/shop-export`) -- and, reading that root-owned but
-world-readable script, that it calls `pickle.load()` on whatever file
-path it's handed with no validation at all (CWE-502).
-**Does not have:** root yet -- has to actually build and detonate a
-malicious pickle (`__reduce__` returning `(os.system, (...))`) via
-`sudo -u opsuser /opt/shop/scripts/ticket_export.py <path>`. `opsuser`
-itself has no valid password (`usermod -L`, see `setup_privesc.sh`) --
-this exploit is the *only* way to act as that account, not one of
-several. Notably, the payload's `os.system` call is a genuinely
-`opsuser` process (both real and effective UID, since `sudo` performs the
-switch before exec'ing the target) only for the lifetime of that one
-invocation -- a setuid copy of a shell planted for later reuse would only
-ever carry an *effective* `opsuser` identity forward (Linux doesn't let
-an unprivileged process change its own real UID), which is not enough to
-satisfy Stage 12's own `sudo` check. The realistic exploit therefore
-chains straight into Stage 12 from inside this same payload, while it is
-still genuinely `opsuser` -- see
-`vulnerable/privilege_escalation/README.md` for why and the exact
-payload.
+`appuser ALL=(opsuser) NOPASSWD: /opt/shop/scripts/archive_worker.py *`
+(`/etc/sudoers.d/shop-archive`) -- and, reading that root-owned but
+world-readable script, that it inserts `/opt/shop/backups/outbox/`
+(owned by `appuser`, not `opsuser`) at the *front* of `sys.path` before
+importing a "handler" module by name -- CWE-427, Uncontrolled Search
+Path Element.
+**Does not have:** root yet -- has to actually plant a malicious
+same-named module in the outbox directory and invoke
+`sudo -u opsuser /opt/shop/scripts/archive_worker.py <handler-name>` so
+`__import__(handler_name)` resolves to the planted file instead of
+whatever a legitimate handler would have been. `opsuser` itself has no
+valid password (`usermod -L`, see `setup_privesc.sh`) -- this exploit is
+the *only* way to act as that account, not one of several. As with any
+such handoff, the payload's own code is a genuinely `opsuser` process
+(both real and effective UID, since `sudo` performs the switch before
+exec'ing the target) only for the lifetime of that one invocation -- a
+setuid copy of a shell planted for later reuse would only ever carry an
+*effective* `opsuser` identity forward (Linux doesn't let an unprivileged
+process change its own real UID), which is not enough to satisfy Stage
+12's own `sudo` check. The realistic exploit performs (or stages)
+whatever Stage 12 needs from inside this same payload, while it is still
+genuinely `opsuser` -- see `vulnerable/privilege_escalation/README.md`
+for the exact payload.
 **Mechanism:** deterministic, code-level privilege escalation -- not a
 file-permission bug and not a kernel CVE. See
 `vulnerable/privilege_escalation/README.md` for the exact reproduction
 steps and payload. `tests/test_privilege_escalation.py` asserts `appuser`
-has exactly one sudo grant, that it names exactly this script, and that
-the script is not writable by anyone but root.
+has exactly one sudo grant, that it names exactly this script, that the
+script is not writable by anyone but root, and that the outbox directory
+it trusts is appuser-owned.
 **Log evidence:** outside this app's own logs (host/auditd territory);
 this is a deliberate limitation of an application-level lab — see
 docs/defensive-controls.md for what a real deployment would add.
-**Mitigation:** never call `pickle.load()` (or anything built on the
-pickle protocol) on data from an untrusted or even semi-trusted source;
-use a safe serialization format (JSON, protobuf) across any trust
-boundary, including an internal one.
+**Mitigation:** never insert an attacker-influenceable directory into a
+module search path before an import; resolve pluggable handlers from a
+fixed, root-owned registry instead of a writable drop directory.
 
-## Stage 12 — Privilege escalation, hop 2: opsuser -> root (tar wildcard injection)
+## Stage 12 — Privilege escalation, hop 2: opsuser -> root (config-driven hook injection)
 
 **Has:** as `opsuser` (reached via Stage 11), discovered its one and only
 sudo grant -- `opsuser ALL=(root) NOPASSWD: /opt/shop/scripts/backup.sh`
 (`/etc/sudoers.d/shop-ops`) -- and that the script, root-owned and not
-writable, runs `tar -czf <dest> *` over `/opt/shop/backups/staging/`, a
-directory `opsuser` owns and can write to.
-**Does not have:** root yet -- has to actually exploit the tar
-wildcard/argument-injection technique (GTFOBins-style): plant
-`--checkpoint=1` and `--checkpoint-action=exec=sh payload.sh` as
-filenames in the staging directory, then `sudo` the script so root's tar
-invocation expands the glob into those extra arguments and runs the
-attacker's payload.
-**Mechanism:** deterministic, configuration-level privilege escalation.
-See `vulnerable/privilege_escalation/README.md` for the exact
-reproduction steps. **Not** a kernel CVE, **not**
-`ALL=(ALL) NOPASSWD:ALL`, **not** a file-permission bug like Stage 11 or
-the old (removed) group-writable-script design
-(`tests/test_privilege_escalation.py` asserts all three).
+writable, `source`s `/opt/shop/scripts/backup.conf` (owned by `opsuser`)
+and `eval`s a `POST_BACKUP_HOOK` command from it, completely
+unvalidated.
+**Does not have:** root yet -- has to actually edit `backup.conf` (which
+`opsuser` genuinely owns -- no trick needed to get write access to it) to
+set `POST_BACKUP_HOOK` to an attacker-chosen command, then run
+`sudo /opt/shop/scripts/backup.sh` so root sources that config and
+`eval`s the hook.
+**Mechanism:** deterministic, trust-boundary privilege escalation -- a
+privileged script trusting a lower-privileged account's own
+configuration file for a command to run. See
+`vulnerable/privilege_escalation/README.md` for the exact reproduction
+steps. **Not** a kernel CVE, **not** `ALL=(ALL) NOPASSWD:ALL`, **not** a
+file-permission bug on the script itself, and **not** the same bug class
+as Stage 11 -- deliberately a different technique at each hop
+(`tests/test_privilege_escalation.py` asserts all of this).
 **Log evidence:** outside this app's own logs (host/auditd territory);
 same deliberate limitation as Stage 11.
-**Mitigation:** any script a sudo rule grants elevated execution of must
-never pass an unquoted/glob argument straight to a program (`tar`,
-`chown`, `rsync`, ...) that treats certain argument patterns specially,
-even when the script itself is properly locked down against editing.
+**Mitigation:** never let a privileged script `source`/`eval` a
+configuration file writable by a less-privileged account without
+treating that as equivalent to granting that account the sudo rule
+directly; validate/allowlist any such hook, or run it at the lower
+privilege level instead of as root.
 
 ## Stage 13 — Root
 

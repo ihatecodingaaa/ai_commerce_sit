@@ -35,7 +35,7 @@
 |             |            |                                                     |
 |             |            v                                                     |
 |             |     vulnerable/upload/image_processor.py                        |
-|             |        (imports+executes .py files dropped in the upload dir)    |
+|             |        (shells out to `convert` with the filename unescaped)     |
 |             |            ^                                                     |
 |             |            |                                                     |
 |             +--> admin.py / api_admin.py (require_admin, session auth)         |
@@ -53,12 +53,13 @@
 |                                                                                  |
 |  -----------------------------------------------------------------------       |
 |  Local host (inside this container only) -- strict 3-tier chain, no group:     |
-|    appuser        ONE sudo grant: run ticket_export.py as opsuser (NOPASSWD)   |
-|    /opt/shop/scripts/ticket_export.py   root:root, 755 -- pickle.load() bug    |
+|    appuser        ONE sudo grant: run archive_worker.py as opsuser (NOPASSWD)  |
+|    /opt/shop/scripts/archive_worker.py  root:root, 755 -- sys.path insert bug  |
+|    /opt/shop/backups/outbox/            appuser:appuser, 755 (Hop 1 bug)       |
 |    opsuser        locked account (no password) -- reachable ONLY via that bug  |
 |    opsuser        ONE sudo grant: run backup.sh as root (NOPASSWD)             |
-|    /opt/shop/scripts/backup.sh          root:root, 755 -- tar wildcard bug     |
-|    /opt/shop/backups/staging/           opsuser:opsuser, 700                   |
+|    /opt/shop/scripts/backup.sh          root:root, 755 -- sources backup.conf  |
+|    /opt/shop/scripts/backup.conf        opsuser:opsuser, 644 (Hop 2 bug)       |
 |    /root/final_flag                     root-only                              |
 +---------------------------------------------------------------------------------+
                                                |
@@ -115,7 +116,7 @@ same `products.image_path` column and render identically on
 | What it's *for* | a human admin managing the catalog by hand | the warehouse/inventory system pushing new products with no human present |
 | File type check | real file content, sniffed by magic bytes -- `app/services/product_photos.py` | whether `.jpg` appears anywhere in the filename -- `app/services/catalog_photos.py` |
 | Stored filename | server-generated `uuid4().hex` + the extension the sniffer determined, never the client's filename | forwarded byte-for-byte, real filename (and extension) intact, to the internal image API below |
-| What happens to the file | served back as raw bytes via `send_from_directory`, never interpreted as anything but image bytes | passed through `app/services/image_client.py` to `POST /api/images/upload` (support-image-service's own, never-disclosed credential -- see `app/services/rotation.py`), where `vulnerable/upload/image_processor.py` may **import and execute** `.py`-named files, before a copy is also saved under `PRODUCT_PHOTO_DIR` so the product still displays normally |
+| What happens to the file | served back as raw bytes via `send_from_directory`, never interpreted as anything but image bytes | passed through `app/services/image_client.py` to `POST /api/images/upload` (support-image-service's own, never-disclosed credential -- see `app/services/rotation.py`), where `vulnerable/upload/image_processor.py` **shells out to ImageMagick's `convert`** with the filename interpolated into the command line unescaped, before a copy is also saved under `PRODUCT_PHOTO_DIR` so the product still displays normally |
 
 `/api/images/upload` itself is not directly reachable by an outside
 attacker in this version of the lab -- see `vulnerable/upload/README.md`

@@ -17,10 +17,12 @@ however, where the real vulnerability's *effect* lands:
      part -- a header fully controlled by whoever originally submitted the
      file -- instead of the filename extension or the actual file bytes.
   2. Storage keeps the original filename (minus path separators), so the
-     extension the *processing* stage will trust is whatever that
-     original submitter named the file.
-  3. app/../vulnerable/upload/image_processor.py decides what to do based
-     on that filename extension: a `.py` file is imported and executed.
+     on-disk path the *processing* stage will later shell out with is
+     built directly from whatever that original submitter named the file.
+  3. app/../vulnerable/upload/image_processor.py generates a thumbnail by
+     interpolating that on-disk path into a shell command line for
+     ImageMagick's `convert`, unescaped -- a filename containing shell
+     metacharacters breaks out of the intended command (CWE-78).
 
 Both of those attacker-controlled values (Content-Type, filename) arrive
 here untouched from whatever the catalog-sync-service-token holder
