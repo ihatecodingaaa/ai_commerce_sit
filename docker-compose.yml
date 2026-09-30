@@ -51,5 +51,20 @@ services:
       - ollama-models:/root/.ollama
     restart: unless-stopped
 
+  # Optional: key-holding proxy for a hosted LLM (Groq). Keeps the API key
+  # out of the `app` container, which is the intentionally exploitable host.
+  # Reads LLM_UPSTREAM_KEY from .env.llm (not .env). Bound to 127.0.0.1.
+  # Start with: docker compose --profile with-llm-proxy up -d
+  llm-proxy:
+    image: python:3.11-slim
+    profiles: ["with-llm-proxy"]
+    network_mode: host
+    env_file:
+      - .env.llm
+    volumes:
+      - ./scripts/llm_proxy.py:/srv/llm_proxy.py:ro
+    command: ["python", "/srv/llm_proxy.py"]
+    restart: unless-stopped
+
 volumes:
   ollama-models:

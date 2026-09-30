@@ -55,6 +55,18 @@ class Config:
 
     DATABASE_PATH = str(BASE_DIR / os.environ.get("DATABASE_URL", "database/shop_lab.db"))
 
+    # Chat backend: "ollama" (local, default) or "openai" (any OpenAI-
+    # compatible endpoint, e.g. Groq). For hosted APIs, point LLM_BASE_URL at
+    # the key-holding proxy (scripts/llm_proxy.py) rather than putting the
+    # API key in this process's environment: this app's container is the
+    # intentionally exploitable host, so anything in its env or .env is
+    # readable by a student with code execution.
+    LLM_BACKEND = os.environ.get("LLM_BACKEND", "ollama").strip().lower()
+    LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:11435/v1")
+    LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.1-8b-instant")
+    LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
+    LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "2"))
+
     OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
     # qwen2.5:1.5b was tried as a faster default and reverted: a direct A/B
     # against qwen2.5:3b on this app's exact system prompt/tool schemas

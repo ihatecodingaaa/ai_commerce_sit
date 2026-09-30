@@ -138,3 +138,38 @@ def test_agent_allows_internal_kb_disclosure_after_ingesting_a_review(monkeypatc
     assert catalog_sync_token in " ".join(r["body"] for r in tool_results[1]["results"])
 
     agent_module.reset_conversation(alice["id"])
+
+
+def test_openai_message_conversion_pairs_ids_and_drops_orphans():
+    from app.chatbot.ollama_client import _to_openai_messages
+
+    msgs = [
+        {"role": "system", "content": "s"},
+        {"role": "tool", "name": "x", "content": "orphan"},
+        {"role": "assistant", "content": "", "tool_calls": [
+            {"function": {"name": "t", "arguments": {"a": 1}}}]},
+        {"role": "tool", "name": "t", "content": "{}"},
+    ]
+    out = _to_openai_messages(msgs)
+    assert [m["role"] for m in out] == ["system", "assistant", "tool"]
+    call = out[1]["tool_calls"][0]
+    assert call["function"]["arguments"] == '{"a": 1}'
+    assert out[2]["tool_call_id"] == call["id"]
+
+
+def test_openai_backend_parses_tool_calls(monkeypatch):
+    from app.chatbot import ollama_client
+    from app.config import config
+
+    class R:
+        status_code = 200
+        headers = {}
+        def raise_for_status(self): pass
+        def json(self):
+            return {"choices": [{"message": {"content": None, "tool_calls": [
+                {"id": "c1", "function": {"name": "t", "arguments": '{"q": "x"}'}}]}}]}
+
+    monkeypatch.setattr(config, "LLM_BACKEND", "openai")
+    monkeypatch.setattr(ollama_client.requests, "post", lambda *a, **k: R())
+    msg = ollama_client.chat([{"role": "user", "content": "hi"}], tools=[{"type": "function"}])
+    assert msg["tool_calls"][0]["function"]["arguments"] == {"q": "x"}

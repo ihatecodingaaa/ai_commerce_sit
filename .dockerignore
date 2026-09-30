@@ -14,3 +14,8 @@ vulnerable/privilege_escalation/README.md
 __pycache__
 *.pyc
 .pytest_cache
+
+# Hosted-LLM API key + its proxy must never be readable inside the exploitable container
+.env
+.env.llm
+scripts/llm_proxy.py

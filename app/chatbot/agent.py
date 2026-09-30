@@ -119,7 +119,7 @@ def handle_chat_message(user: dict, user_message: str, request_id: str) -> str:
             log_event("chatbot_error", user_id=user["id"], request_id=request_id, error=str(exc))
             final_text = (
                 "Sorry, the support assistant is temporarily unavailable "
-                "(could not reach the local Ollama model)."
+                "(could not reach the language model)."
             )
             break
 
