@@ -16,10 +16,13 @@ Config (env or .env.llm next to this repo, never .env):
   LLM_MODEL           default qwen/qwen3.8-27b
   LLM_PROXY_PORT      default 11435 (bound to 127.0.0.1 only)
   LLM_MAX_TOKENS      default 400 (upper bound on per-request max_tokens)
+  LLM_MAX_CONCURRENCY default 2 (simultaneous upstream calls)
 """
 import json
 import os
 import sys
+import threading
+import time
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -44,6 +47,12 @@ MODEL = os.environ.get("LLM_MODEL", "qwen/qwen3.8-27b")
 PORT = int(os.environ.get("LLM_PROXY_PORT", "11435"))
 MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "400"))
 MAX_BODY = 256 * 1024
+# Free tiers rate-limit per key. Cap simultaneous upstream calls and, on a
+# 429, wait out the upstream Retry-After (bounded) and retry, so a burst of
+# users queues briefly instead of erroring.
+_slots = threading.BoundedSemaphore(int(os.environ.get("LLM_MAX_CONCURRENCY", "2")))
+_RETRIES = int(os.environ.get("LLM_PROXY_RETRIES", "4"))
+_MAX_WAIT = float(os.environ.get("LLM_PROXY_MAX_WAIT", "15"))
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -94,16 +103,24 @@ class Handler(BaseHTTPRequestHandler):
             },
             method="POST",
         )
-        try:
-            with urllib.request.urlopen(req, timeout=60) as r:
-                self._send(r.status, r.read())
-        except urllib.error.HTTPError as e:
-            extra = {}
-            if e.headers.get("retry-after"):
-                extra["Retry-After"] = e.headers["retry-after"]
-            self._send(e.code, e.read() or b'{"error":"upstream"}', extra)
-        except Exception as e:  # network/timeouts -> 502
-            self._send(502, json.dumps({"error": f"upstream failure: {e}"}).encode())
+        for attempt in range(_RETRIES + 1):
+            try:
+                with _slots:
+                    with urllib.request.urlopen(req, timeout=60) as r:
+                        return self._send(r.status, r.read())
+            except urllib.error.HTTPError as e:
+                ra = e.headers.get("retry-after")
+                if e.code == 429 and attempt < _RETRIES:
+                    try:
+                        wait = float(ra) if ra else 2 ** attempt
+                    except ValueError:
+                        wait = 2 ** attempt
+                    time.sleep(min(wait, _MAX_WAIT))
+                    continue
+                extra = {"Retry-After": ra} if ra else {}
+                return self._send(e.code, e.read() or b'{"error":"upstream"}', extra)
+            except Exception as e:  # network/timeouts -> 502
+                return self._send(502, json.dumps({"error": f"upstream failure: {e}"}).encode())
 
     def log_message(self, *args):
         pass

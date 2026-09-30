@@ -65,7 +65,7 @@ class Config:
     LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:11435/v1")
     LLM_MODEL = os.environ.get("LLM_MODEL", "qwen/qwen3.8-27b")
     LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
-    LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "2"))
+    LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "1"))
 
     OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
     # qwen2.5:1.5b was tried as a faster default and reverted: a direct A/B
