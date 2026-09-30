@@ -1,8 +1,19 @@
 """Thin HTTP client for the chat model backend.
 
 Two backends, picked by LLM_BACKEND: the local Ollama server (default) or
-any OpenAI-compatible /chat/completions endpoint (e.g. Groq, normally
-reached through the key-holding proxy in scripts/llm_proxy.py).
+any OpenAI-compatible /chat/completions endpoint (e.g. Groq or OpenRouter,
+normally reached through the key-holding proxy in scripts/llm_proxy.py).
+
+When LLM_BACKEND is "openai" and LLM_FALLBACK_TO_OLLAMA is true (the
+default), a failed hosted call -- a free-tier quota exhausted, a rate
+limit, a network blip -- falls back to the local Ollama server for that
+reply instead of surfacing an error to the student. Local Ollama must
+still be installed and reachable for this to actually help; see
+is_ollama_reachable() / the /health route, which reports it explicitly.
+After a failure, hosted calls are skipped (going straight to Ollama) for
+LLM_FALLBACK_COOLDOWN_SECONDS, so a sustained outage or a daily quota that
+won't reset for hours doesn't pay a failed hosted request on every single
+message -- it just periodically checks whether hosted has recovered.
 
 The LLM has zero direct access to the database or filesystem -- it only
 ever sees text. All real work happens in app/tools/*, invoked by
@@ -14,17 +25,45 @@ import time
 import requests
 
 from app.config import config
+from app.logging_setup import log_event
 
 
 class OllamaError(RuntimeError):
     pass
 
 
+# Monotonic timestamp until which hosted calls are skipped in favor of the
+# local fallback. 0 means "hosted is presumed healthy, try it normally."
+_hosted_cooldown_until = 0.0
+
+
 def chat(messages: list[dict], tools: list[dict] | None = None) -> dict:
     """Return the assistant message dict ({"content", optional "tool_calls"})."""
-    if config.LLM_BACKEND == "openai":
+    global _hosted_cooldown_until
+
+    if config.LLM_BACKEND != "openai":
+        return _chat_ollama(messages, tools)
+
+    if not config.LLM_FALLBACK_TO_OLLAMA:
         return _chat_openai(messages, tools)
-    return _chat_ollama(messages, tools)
+
+    now = time.monotonic()
+    if now < _hosted_cooldown_until:
+        return _chat_ollama(messages, tools)
+
+    try:
+        result = _chat_openai(messages, tools)
+    except OllamaError as exc:
+        _hosted_cooldown_until = now + config.LLM_FALLBACK_COOLDOWN_SECONDS
+        log_event(
+            "llm_backend_fallback",
+            reason=str(exc),
+            cooldown_seconds=config.LLM_FALLBACK_COOLDOWN_SECONDS,
+        )
+        return _chat_ollama(messages, tools)
+
+    _hosted_cooldown_until = 0.0  # hosted call succeeded -- clear any prior cooldown
+    return result
 
 
 def _to_openai_messages(messages: list[dict]) -> list[dict]:
@@ -164,6 +203,7 @@ def _chat_ollama(messages: list[dict], tools: list[dict] | None) -> dict:
 
 
 def is_reachable() -> bool:
+    """Whether the *primary* configured backend answers right now."""
     if config.LLM_BACKEND == "openai":
         try:
             # Reachability of the proxy/endpoint only; 401/404 still means "up".
@@ -171,8 +211,23 @@ def is_reachable() -> bool:
             return True
         except requests.RequestException:
             return False
+    return is_ollama_reachable()
+
+
+def is_ollama_reachable() -> bool:
+    """Whether local Ollama specifically answers, regardless of which
+    backend is primary. Used by /health to confirm the fallback path in
+    chat() above actually has somewhere to fall back to, not just that the
+    hosted API is up.
+    """
     try:
         resp = requests.get(f"{config.OLLAMA_URL.rstrip('/')}/api/tags", timeout=3)
         return resp.status_code == 200
     except requests.RequestException:
         return False
+
+
+def fallback_active() -> bool:
+    """True while hosted calls are being skipped in favor of local Ollama
+    (see the cooldown in chat() above)."""
+    return time.monotonic() < _hosted_cooldown_until

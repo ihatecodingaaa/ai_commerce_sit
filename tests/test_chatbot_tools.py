@@ -181,3 +181,59 @@ def test_dispatch_tool_returns_error_on_missing_required_arg(alice):
     result = _dispatch_tool("knowledge_base_search", {}, dict(alice), "req1", [])
     assert "error" in result
     assert "knowledge_base_search" in result["error"]
+
+
+def test_openai_backend_falls_back_to_ollama_on_failure(monkeypatch):
+    from app.chatbot import ollama_client
+    from app.config import config
+
+    monkeypatch.setattr(config, "LLM_BACKEND", "openai")
+    monkeypatch.setattr(config, "LLM_FALLBACK_TO_OLLAMA", True)
+    monkeypatch.setattr(config, "LLM_FALLBACK_COOLDOWN_SECONDS", 60)
+    monkeypatch.setattr(ollama_client, "_hosted_cooldown_until", 0.0)
+
+    def broken_openai(messages, tools):
+        raise ollama_client.OllamaError("simulated quota exceeded")
+
+    calls = {"ollama": 0}
+
+    def fake_ollama(messages, tools):
+        calls["ollama"] += 1
+        return {"role": "assistant", "content": "from local ollama"}
+
+    monkeypatch.setattr(ollama_client, "_chat_openai", broken_openai)
+    monkeypatch.setattr(ollama_client, "_chat_ollama", fake_ollama)
+
+    msg = ollama_client.chat([{"role": "user", "content": "hi"}])
+    assert msg["content"] == "from local ollama"
+    assert calls["ollama"] == 1
+
+    # Cooldown active: a second call must skip straight to Ollama without
+    # calling the (still broken) hosted path again.
+    hosted_calls = {"n": 0}
+    def counting_openai(messages, tools):
+        hosted_calls["n"] += 1
+        raise ollama_client.OllamaError("should not be retried during cooldown")
+    monkeypatch.setattr(ollama_client, "_chat_openai", counting_openai)
+
+    ollama_client.chat([{"role": "user", "content": "again"}])
+    assert hosted_calls["n"] == 0
+    assert calls["ollama"] == 2
+
+
+def test_openai_backend_no_fallback_when_disabled(monkeypatch):
+    from app.chatbot import ollama_client
+    from app.config import config
+
+    monkeypatch.setattr(config, "LLM_BACKEND", "openai")
+    monkeypatch.setattr(config, "LLM_FALLBACK_TO_OLLAMA", False)
+    monkeypatch.setattr(ollama_client, "_hosted_cooldown_until", 0.0)
+
+    def broken_openai(messages, tools):
+        raise ollama_client.OllamaError("simulated failure")
+
+    monkeypatch.setattr(ollama_client, "_chat_openai", broken_openai)
+
+    import pytest
+    with pytest.raises(ollama_client.OllamaError):
+        ollama_client.chat([{"role": "user", "content": "hi"}])

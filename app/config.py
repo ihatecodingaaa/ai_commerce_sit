@@ -66,6 +66,16 @@ class Config:
     LLM_MODEL = os.environ.get("LLM_MODEL", "qwen/qwen3.8-27b")
     LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
     LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "1"))
+    # If the hosted backend fails (free-tier quota exhausted, rate limited,
+    # network blip), fall back to local Ollama for that reply instead of
+    # showing the student an error. Requires Ollama to actually be running
+    # -- see app/chatbot/ollama_client.py's module docstring and
+    # is_ollama_reachable(), surfaced on /health.
+    LLM_FALLBACK_TO_OLLAMA = _bool("LLM_FALLBACK_TO_OLLAMA", "true")
+    # After a hosted failure, skip straight to Ollama for this many seconds
+    # before trying hosted again, so a sustained outage or an exhausted
+    # daily quota doesn't pay a failed hosted request on every message.
+    LLM_FALLBACK_COOLDOWN_SECONDS = int(os.environ.get("LLM_FALLBACK_COOLDOWN_SECONDS", "120"))
 
     OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
     # qwen2.5:1.5b was tried as a faster default and reverted: a direct A/B
