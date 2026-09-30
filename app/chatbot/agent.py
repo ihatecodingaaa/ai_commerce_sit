@@ -69,20 +69,37 @@ def _dispatch_tool(tool_name: str, raw_args, user: dict, request_id: str, histor
         log_event("tool_invocation_error", tool=tool_name, reason="unknown_tool", request_id=request_id)
         return {"error": f"unknown tool: {tool_name}"}
 
-    if tool_name in SCOPED_TOOLS:
-        # Authorization decided here, server-side -- NOT by the model.
-        clean_args.pop("user_id", None)
-        clean_args.pop("customer_id", None)
-        result = func(user_id=user["id"], **clean_args)
-    elif tool_name == "knowledge_base_search":
-        # No per-customer scoping concept (deliberate -- see module
-        # docstring), but internal-visibility access is still decided here,
-        # server-side, from conversation provenance -- never by the model
-        # or by anything it was asked to search for.
-        clean_args.pop("allow_internal", None)
-        result = func(allow_internal=_history_has_untrusted_kb_hit(history), **clean_args)
-    else:
-        result = func(**clean_args)
+    try:
+        if tool_name in SCOPED_TOOLS:
+            # Authorization decided here, server-side -- NOT by the model.
+            clean_args.pop("user_id", None)
+            clean_args.pop("customer_id", None)
+            result = func(user_id=user["id"], **clean_args)
+        elif tool_name == "knowledge_base_search":
+            # No per-customer scoping concept (deliberate -- see module
+            # docstring), but internal-visibility access is still decided
+            # here, server-side, from conversation provenance -- never by
+            # the model or by anything it was asked to search for.
+            clean_args.pop("allow_internal", None)
+            result = func(allow_internal=_history_has_untrusted_kb_hit(history), **clean_args)
+        else:
+            result = func(**clean_args)
+    except TypeError as exc:
+        # A model can omit a required argument or pass the wrong type --
+        # this is ordinary malformed tool-call output, not an app bug, and
+        # every backend (Ollama or a hosted API) can produce it. Report it
+        # back to the model as a tool result so it can retry/rephrase,
+        # instead of letting it crash the whole chat request.
+        log_event(
+            "tool_invocation_error",
+            tool=tool_name,
+            reason="invalid_arguments",
+            args=clean_args,
+            error=str(exc),
+            user_id=user["id"],
+            request_id=request_id,
+        )
+        return {"error": f"invalid arguments for {tool_name}: {exc}"}
 
     log_event(
         "tool_invocation",

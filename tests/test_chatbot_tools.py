@@ -173,3 +173,11 @@ def test_openai_backend_parses_tool_calls(monkeypatch):
     monkeypatch.setattr(ollama_client.requests, "post", lambda *a, **k: R())
     msg = ollama_client.chat([{"role": "user", "content": "hi"}], tools=[{"type": "function"}])
     assert msg["tool_calls"][0]["function"]["arguments"] == {"q": "x"}
+
+
+def test_dispatch_tool_returns_error_on_missing_required_arg(alice):
+    from app.chatbot.agent import _dispatch_tool
+
+    result = _dispatch_tool("knowledge_base_search", {}, dict(alice), "req1", [])
+    assert "error" in result
+    assert "knowledge_base_search" in result["error"]
