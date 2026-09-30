@@ -57,8 +57,18 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        # /v1/models doubles as the health check used by the app.
-        self._send(200, json.dumps({"data": [{"id": MODEL}]}).encode())
+        # /v1/models doubles as the app's health check and lets an operator
+        # see which models the upstream key can use. Falls back to the
+        # pinned model if upstream can't be reached.
+        req = urllib.request.Request(
+            f"{UPSTREAM}/models",
+            headers={"Authorization": f"Bearer {KEY}", "User-Agent": "shop-lab-llm-proxy/1.0"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return self._send(200, r.read())
+        except Exception:
+            self._send(200, json.dumps({"data": [{"id": MODEL}]}).encode())
 
     def do_POST(self):
         if self.path.rstrip("/") != "/v1/chat/completions":
