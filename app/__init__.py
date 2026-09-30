@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory
 
 from app.config import config
 
@@ -52,6 +52,10 @@ def create_app() -> Flask:
     os.makedirs(config.UPLOAD_DIR, exist_ok=True)
     os.makedirs(config.PRODUCT_PHOTO_DIR, exist_ok=True)
     os.makedirs(os.path.dirname(config.DATABASE_PATH), exist_ok=True)
+
+    @app.get("/uploads/images/<path:filename>")
+    def uploaded_image_artifact(filename):
+        return send_from_directory(config.PRODUCT_PHOTO_DIR, filename)
 
     from app.routes.auth_routes import bp as auth_bp
     from app.routes.pages import bp as pages_bp
