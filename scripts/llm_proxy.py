@@ -13,7 +13,7 @@ use it for much beyond what the chatbot itself can do.
 Config (env or .env.llm next to this repo, never .env):
   LLM_UPSTREAM_KEY    required, your Groq key
   LLM_UPSTREAM_URL    default https://api.groq.com/openai/v1
-  LLM_MODEL           default llama-3.1-8b-instant
+  LLM_MODEL           default qwen/qwen3.8-27b
   LLM_PROXY_PORT      default 11435 (bound to 127.0.0.1 only)
   LLM_MAX_TOKENS      default 400 (upper bound on per-request max_tokens)
 """
@@ -40,7 +40,7 @@ def _load_env_file():
 _load_env_file()
 KEY = os.environ.get("LLM_UPSTREAM_KEY", "")
 UPSTREAM = os.environ.get("LLM_UPSTREAM_URL", "https://api.groq.com/openai/v1").rstrip("/")
-MODEL = os.environ.get("LLM_MODEL", "llama-3.1-8b-instant")
+MODEL = os.environ.get("LLM_MODEL", "qwen/qwen3.8-27b")
 PORT = int(os.environ.get("LLM_PROXY_PORT", "11435"))
 MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "400"))
 MAX_BODY = 256 * 1024

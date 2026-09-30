@@ -63,7 +63,7 @@ class Config:
     # readable by a student with code execution.
     LLM_BACKEND = os.environ.get("LLM_BACKEND", "ollama").strip().lower()
     LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:11435/v1")
-    LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.1-8b-instant")
+    LLM_MODEL = os.environ.get("LLM_MODEL", "qwen/qwen3.8-27b")
     LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
     LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "2"))
 
