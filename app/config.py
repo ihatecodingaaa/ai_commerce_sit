@@ -63,7 +63,7 @@ class Config:
     # readable by a student with code execution.
     LLM_BACKEND = os.environ.get("LLM_BACKEND", "ollama").strip().lower()
     LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:11435/v1")
-    LLM_MODEL = os.environ.get("LLM_MODEL", "qwen/qwen3.8-27b")
+    LLM_MODEL = os.environ.get("LLM_MODEL", "liquid/lfm-2.5-2.6b:free")
     LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
     LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "1"))
     # If the hosted backend fails (free-tier quota exhausted, rate limited,
@@ -135,7 +135,18 @@ class Config:
     # every observed normal-length reply was unaffected (didn't hit the
     # cap either way) -- unlike swapping to a smaller model, this can't
     # affect whether tool calls get emitted, only how much prose follows.
-    OLLAMA_NUM_PREDICT = int(os.environ.get("OLLAMA_NUM_PREDICT", "250"))
+    # Dropped further to 120 when reply speed became the priority over
+    # prose length/quality: a tool-call decision needs only a few dozen
+    # tokens, and even a terse final answer fits comfortably. Caps
+    # worst-case generation around ~34s (120 * ~280ms/token) instead of
+    # ~70s, with no effect on tool-call reliability either way.
+    OLLAMA_NUM_PREDICT = int(os.environ.get("OLLAMA_NUM_PREDICT", "120"))
+    # llama.cpp (what Ollama runs under the hood) picks a thread count on
+    # its own, which isn't always a good match for a small, fixed-core VM
+    # -- more threads than physical cores just adds scheduling overhead.
+    # Pin it to the actual core count by default; override if this ever
+    # runs on a bigger box.
+    OLLAMA_NUM_THREAD = int(os.environ.get("OLLAMA_NUM_THREAD", str(os.cpu_count() or 4)))
 
     # The catalog-sync-service credential is NOT a static config value. It
     # is generated at seed time and rotated automatically on a timer -- see

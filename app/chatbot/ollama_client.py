@@ -180,6 +180,7 @@ def _chat_ollama(messages: list[dict], tools: list[dict] | None) -> dict:
         "options": {
             "num_ctx": config.OLLAMA_NUM_CTX,
             "num_predict": config.OLLAMA_NUM_PREDICT,
+            "num_thread": config.OLLAMA_NUM_THREAD,
         },
     }
     if tools:
