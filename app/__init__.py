@@ -55,7 +55,7 @@ def create_app() -> Flask:
 
     @app.get("/uploads/images/<path:filename>")
     def uploaded_image_artifact(filename):
-        return send_from_directory(config.PRODUCT_PHOTO_DIR, filename)
+        return send_from_directory(config.UPLOAD_DIR, filename)
 
     from app.routes.auth_routes import bp as auth_bp
     from app.routes.pages import bp as pages_bp
