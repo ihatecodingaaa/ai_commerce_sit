@@ -56,10 +56,10 @@
 |    appuser        ONE sudo grant: run archive_worker.py as opsuser (NOPASSWD)  |
 |    /opt/shop/scripts/archive_worker.py  root:root, 755 -- sys.path insert bug  |
 |    /opt/shop/backups/outbox/            appuser:appuser, 755 (Hop 1 bug)       |
-|    opsuser        locked account (no password) -- reachable ONLY via that bug  |
-|    opsuser        ONE sudo grant: run backup.sh as root (NOPASSWD)             |
-|    /opt/shop/scripts/backup.sh          root:root, 755 -- sources backup.conf  |
-|    /opt/shop/scripts/backup.conf        opsuser:opsuser, 644 (Hop 2 bug)       |
+|    .../outbox/handlers.manifest         appuser:appuser (self-signed, Hop 1)   |
+|    opsuser        locked account, NO sudo grant -- reachable ONLY via Hop 1    |
+|    /opt/shop/scripts/rootwatch/         root:root, 600 key+blob -- Hop 2 target|
+|    .../backups/diagnostics/rootwatch.core  opsuser:opsuser, 440 (Hop 2 bug)    |
 |    /root/final_flag                     root-only                              |
 +---------------------------------------------------------------------------------+
                                                |

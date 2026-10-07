@@ -73,11 +73,14 @@ If you fork or extend this lab:
   attack a third-party host. The chatbot's tools only ever talk to the
   lab's own SQLite database and the lab's own Ollama instance over
   `OLLAMA_URL`.
-- The privilege-escalation chain (Stage 11-12) is a strict two-hop path,
-  each hop scoped to a single, narrow `sudo` rule against one script the
-  invoking account cannot edit — never `ALL=(ALL) NOPASSWD:ALL`, no group
-  membership, no alternate route between hops, and never anything reaching
-  outside the container's own filesystem.
+- The privilege-escalation chain (Stage 11-12) is a strict two-hop path.
+  Hop 1 is scoped to a single, narrow `sudo` rule against one script the
+  invoking account cannot edit. Hop 2 uses no `sudo` rule at all —
+  `opsuser` recovers root's actual account password via memory forensics
+  on a deliberately-crashed process's core dump, never via a privileged
+  script. Never `ALL=(ALL) NOPASSWD:ALL` anywhere, no group membership, no
+  alternate route between hops, and never anything reaching outside the
+  container's own filesystem.
 
 ## Reporting problems with the lab itself
 

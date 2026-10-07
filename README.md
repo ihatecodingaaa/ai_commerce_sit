@@ -220,7 +220,7 @@ shop-lab/
 │   ├── schema.sql, seed.py
 ├── vulnerable/
 │   ├── upload/                 image_processor.py (the RCE) + instructor README
-│   └── privilege_escalation/   backup.sh + setup_privesc.sh + instructor README
+│   └── privilege_escalation/   archive_worker.py, rootwatch.c, setup_privesc.sh + instructor README
 ├── scripts/
 │   ├── setup.sh, reset_lab.sh, health_check.sh, install_ollama.sh
 ├── tests/

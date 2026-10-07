@@ -5,8 +5,9 @@ indirect prompt injection through RAG -> sensitive information disclosure
 -> limited service credential disclosure -> internal API access ->
 vulnerable file upload -> application-user code execution (OS command
 injection) -> local enumeration -> privilege escalation, hop 1 (appuser ->
-opsuser, Python import-path hijack) -> privilege escalation, hop 2
-(opsuser -> root, config-driven hook injection) -> root.
+opsuser, Python import-path hijack past a self-defeating integrity
+check) -> privilege escalation, hop 2 (opsuser -> root, AES-GCM
+credential recovery from a crash dump) -> root.
 
 Each stage gives the attacker exactly one new capability. No stage is a
 "magic endpoint" — every transition is a consequence of a specific,
@@ -229,7 +230,7 @@ else — there is only one lead to follow, deliberately.
 **Mitigation:** minimize world-readable configuration, restrict `sudo -l`
 visibility where feasible.
 
-## Stage 11 — Privilege escalation, hop 1: appuser -> opsuser (Python import-path hijack)
+## Stage 11 — Privilege escalation, hop 1: appuser -> opsuser (Python import-path hijack past a self-signed integrity check)
 
 **Has:** discovered `appuser`'s one and only sudo grant --
 `appuser ALL=(opsuser) NOPASSWD: /opt/shop/scripts/archive_worker.py *`
@@ -237,9 +238,13 @@ visibility where feasible.
 world-readable script, that it inserts `/opt/shop/backups/outbox/`
 (owned by `appuser`, not `opsuser`) at the *front* of `sys.path` before
 importing a "handler" module by name -- CWE-427, Uncontrolled Search
-Path Element.
+Path Element -- gated by a checksum lookup in `handlers.manifest` that
+lives in that very same `appuser`-writable directory (CWE-354, Improper
+Validation of Integrity Check Value).
 **Does not have:** root yet -- has to actually plant a malicious
-same-named module in the outbox directory and invoke
+same-named module in the outbox directory, compute its own sha256 and
+write that into `handlers.manifest` (the account the check is supposed to
+constrain also controls the proof the check accepts), then invoke
 `sudo -u opsuser /opt/shop/scripts/archive_worker.py <handler-name>` so
 `__import__(handler_name)` resolves to the planted file instead of
 whatever a legitimate handler would have been. `opsuser` itself has no
@@ -247,56 +252,67 @@ valid password (`usermod -L`, see `setup_privesc.sh`) -- this exploit is
 the *only* way to act as that account, not one of several. As with any
 such handoff, the payload's own code is a genuinely `opsuser` process
 (both real and effective UID, since `sudo` performs the switch before
-exec'ing the target) only for the lifetime of that one invocation -- a
-setuid copy of a shell planted for later reuse would only ever carry an
-*effective* `opsuser` identity forward (Linux doesn't let an unprivileged
-process change its own real UID), which is not enough to satisfy Stage
-12's own `sudo` check. The realistic exploit performs (or stages)
-whatever Stage 12 needs from inside this same payload, while it is still
-genuinely `opsuser` -- see `vulnerable/privilege_escalation/README.md`
-for the exact payload.
+exec'ing the target) only for the lifetime of that one invocation.
 **Mechanism:** deterministic, code-level privilege escalation -- not a
 file-permission bug and not a kernel CVE. See
 `vulnerable/privilege_escalation/README.md` for the exact reproduction
 steps and payload. `tests/test_privilege_escalation.py` asserts `appuser`
 has exactly one sudo grant, that it names exactly this script, that the
-script is not writable by anyone but root, and that the outbox directory
-it trusts is appuser-owned.
+script is not writable by anyone but root, that the outbox directory it
+trusts is appuser-owned, and that `handlers.manifest` lives in that same
+appuser-writable directory.
 **Log evidence:** outside this app's own logs (host/auditd territory);
 this is a deliberate limitation of an application-level lab — see
 docs/defensive-controls.md for what a real deployment would add.
 **Mitigation:** never insert an attacker-influenceable directory into a
 module search path before an import; resolve pluggable handlers from a
-fixed, root-owned registry instead of a writable drop directory.
+fixed, root-owned registry instead of a writable drop directory. Never
+store an integrity-check value in the same trust domain as the artifact
+it's meant to validate.
 
-## Stage 12 — Privilege escalation, hop 2: opsuser -> root (config-driven hook injection)
+## Stage 12 — Privilege escalation, hop 2: opsuser -> root (AES-GCM credential recovery from a crash dump)
 
-**Has:** as `opsuser` (reached via Stage 11), discovered its one and only
-sudo grant -- `opsuser ALL=(root) NOPASSWD: /opt/shop/scripts/backup.sh`
-(`/etc/sudoers.d/shop-ops`) -- and that the script, root-owned and not
-writable, `source`s `/opt/shop/scripts/backup.conf` (owned by `opsuser`)
-and `eval`s a `POST_BACKUP_HOOK` command from it, completely
-unvalidated.
-**Does not have:** root yet -- has to actually edit `backup.conf` (which
-`opsuser` genuinely owns -- no trick needed to get write access to it) to
-set `POST_BACKUP_HOOK` to an attacker-chosen command, then run
-`sudo /opt/shop/scripts/backup.sh` so root sources that config and
-`eval`s the hook.
-**Mechanism:** deterministic, trust-boundary privilege escalation -- a
-privileged script trusting a lower-privileged account's own
-configuration file for a command to run. See
+**Has:** as `opsuser` (reached via Stage 11), discovered that `sudo -l`
+shows **nothing** -- Hop 2 is not a sudo misconfiguration at all -- and
+that `backups/diagnostics/rootwatch.core` is readable, a genuine ELF core
+dump left by `rootwatch` (a legacy "confirm the admin credential" health
+check, provisioned to crash deterministically every setup/reset -- see
+`rootwatch.c`). `rootwatch` decrypts root's actual account password from
+an AES-256-GCM blob (`root_secret.enc`) using a key it reads from a plain
+sibling file (`root_secret.key`) -- both root-owned and unreadable by
+`opsuser` directly -- because this lab, like plenty of real deployments,
+never wired up real key custody (a KMS/vault/HSM) for it.
+**Does not have:** a shortcut -- `rootwatch` does cleanse the decrypted
+password (`plaintext`) from memory right after use, so a plain `strings`
+pass over the core dump finds no readable password. What it never
+cleanses is `key` and `blob` (nonce || ciphertext || tag): the one
+variable that "looked like the secret" got scrubbed, the two that
+together reconstruct it did not (CWE-226, Sensitive Information Uncleared
+Before Release, applied incompletely). So `opsuser` still has to pull
+`key` and `blob` back out of the core dump (`gdb`/`objdump`, by variable
+name since the binary isn't stripped) and run a real AES-256-GCM decrypt
+(`openssl enc -d -aes-256-gcm` or the `cryptography` package) to recover
+root's actual password, then `su -`.
+**Mechanism:** deterministic memory-forensics + cryptography exercise --
+not sudo-trust-boundary abuse (no sudo rule exists for `opsuser` at all),
+not a kernel CVE, and not the same bug class as Stage 11 -- deliberately
+a different skill at each hop (`tests/test_privilege_escalation.py`
+asserts no sudo rule exists for `opsuser`, that `root_secret.key`,
+`root_secret.enc`, and `rootwatch` itself are root-owned and unreadable
+by others, and that the core dump is opsuser-owned). See
 `vulnerable/privilege_escalation/README.md` for the exact reproduction
-steps. **Not** a kernel CVE, **not** `ALL=(ALL) NOPASSWD:ALL`, **not** a
-file-permission bug on the script itself, and **not** the same bug class
-as Stage 11 -- deliberately a different technique at each hop
-(`tests/test_privilege_escalation.py` asserts all of this).
+steps, including how the dump is captured deterministically via
+`gdb generate-core-file` regardless of the host's own coredump
+configuration.
 **Log evidence:** outside this app's own logs (host/auditd territory);
 same deliberate limitation as Stage 11.
-**Mitigation:** never let a privileged script `source`/`eval` a
-configuration file writable by a less-privileged account without
-treating that as equivalent to granting that account the sudo rule
-directly; validate/allowlist any such hook, or run it at the lower
-privilege level instead of as root.
+**Mitigation:** never assume "scrub the plaintext" is the whole fix --
+decryption keys and ciphertext are exactly as sensitive as the secret
+they produce and must be cleared from memory immediately after use too,
+disable core dumps for processes that handle secrets
+(`prctl(PR_SET_DUMPABLE, 0)` / `ulimit -c 0`), and keep key custody
+genuinely separate from ciphertext custody (a KMS/vault/HSM, not a
+sibling file read by the same process).
 
 ## Stage 13 — Root
 

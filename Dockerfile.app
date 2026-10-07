@@ -19,6 +19,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         procps \
         libcap2-bin \
         imagemagick \
+        gcc \
+        libssl-dev \
+        gdb \
+        binutils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/shop

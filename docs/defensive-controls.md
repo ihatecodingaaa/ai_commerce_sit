@@ -116,30 +116,48 @@ and that single gap is the entire root cause of Stages 4-7.
   feature this way — resolve handlers from a fixed, root-owned registry
   (an explicit dict of known names to modules, for example), never a
   writable drop directory, regardless of how narrowly the sudo rule that
-  reaches the script is scoped.
+  reaches the script is scoped, and regardless of any checksum/manifest
+  check layered on top (see section 11 below).
 
-## 11. Trusting lower-privileged configuration
+## 11. Integrity checks must live outside the trust domain they constrain
+
+- `vulnerable/privilege_escalation/archive_worker.py` also covers the
+  Stage 11 add-on bug (CWE-354): the sha256 check gating the Stage 11
+  import lives in `handlers.manifest`, in the same `appuser`-writable
+  directory as the handler modules it's meant to validate. A checksum, a
+  signature, or any other integrity proof is only as trustworthy as the
+  account that produced it — if the account you don't trust can also
+  write the proof, the check validates nothing.
+
+## 12. Secrets must not outlive their use in memory
 
 - `vulnerable/privilege_escalation/README.md` covers the Stage 12 bug
-  (opsuser -> root): a root-run script that's correctly locked down
-  against direct editing (root-owned, mode 755) still `source`s and
-  `eval`s a command from a config file the sudo-permitted account owns.
-  Locking down the *script* is necessary but not sufficient — any file a
-  privileged process reads and acts on (config, environment, cache) must
-  get the same scrutiny as the script itself, or a lower-privileged
-  account can reach the same outcome through the side door.
+  (opsuser -> root): `rootwatch` decrypts a credential that's genuinely
+  AES-256-GCM-encrypted at rest, but the decryption key sits in a plain
+  sibling file the same process reads directly (no KMS/vault/HSM).
+  `rootwatch` *does* cleanse the decrypted plaintext from memory before it
+  exits — a real, correct habit — but never touches the key or the
+  ciphertext blob, which together reconstruct the plaintext for free. A
+  partial fix like this is realistic and worth calling out on its own:
+  every value needed to recover a secret is exactly as sensitive as the
+  secret itself, not just the final decrypted form of it. "Encrypted at
+  rest" is not a substitute for real key custody, and any process that
+  handles a secret in memory should disable core dumps for itself
+  (`prctl(PR_SET_DUMPABLE, 0)` / `ulimit -c 0`) and zero *every* sensitive
+  buffer — key, ciphertext, and plaintext alike — immediately after use.
 
-## 12. Service hardening
+## 13. Service hardening
 
 - `appuser` has exactly one sudo right (to `archive_worker.py`, as
   `opsuser`, nothing more), no login shell credentials for anything else,
-  and no filesystem access outside `/opt/shop`. `opsuser` has exactly one
-  sudo right in turn (to `backup.sh`, as root) and **no valid password at
-  all** — the account is locked, so there is no credential to guess, brute
-  -force, or leak; the only way to act as `opsuser` is the Stage 11
-  exploit itself. In production, both accounts should additionally run
-  under a restrictive seccomp/AppArmor profile and without a real login
-  shell.
+  and no filesystem access outside `/opt/shop`. `opsuser` has **no sudo
+  right at all** and **no valid password at all** — the account is
+  locked, so there is no credential to guess, brute-force, or leak; the
+  only way to act as `opsuser` is the Stage 11 exploit itself, and the
+  only way from there to root is the Stage 12 memory-forensics exploit,
+  not a sudo trust boundary. In production, both accounts should
+  additionally run under a restrictive seccomp/AppArmor profile and
+  without a real login shell.
 
 ## 13. Logging and detection integration
 
