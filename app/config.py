@@ -135,12 +135,16 @@ class Config:
     # every observed normal-length reply was unaffected (didn't hit the
     # cap either way) -- unlike swapping to a smaller model, this can't
     # affect whether tool calls get emitted, only how much prose follows.
-    # Dropped further to 120 when reply speed became the priority over
-    # prose length/quality: a tool-call decision needs only a few dozen
-    # tokens, and even a terse final answer fits comfortably. Caps
-    # worst-case generation around ~34s (120 * ~280ms/token) instead of
-    # ~70s, with no effect on tool-call reliability either way.
-    OLLAMA_NUM_PREDICT = int(os.environ.get("OLLAMA_NUM_PREDICT", "120"))
+    # Dropped to 120 when reply speed became the priority over prose
+    # length/quality, then raised back to 300 after a real regression:
+    # 120 was observed live truncating the injection-disclosure reply
+    # mid-sentence, before it ever reached the actual secret value --
+    # when the model prefaces its answer with a KB overview article
+    # before quoting the ticket, that preface alone can exceed 120
+    # tokens. Truncating the lab's own core disclosure mechanism is a
+    # correctness bug, not an acceptable speed/quality tradeoff, so 300
+    # is the floor here regardless of speed goals elsewhere.
+    OLLAMA_NUM_PREDICT = int(os.environ.get("OLLAMA_NUM_PREDICT", "300"))
     # llama.cpp (what Ollama runs under the hood) picks a thread count on
     # its own, which isn't always a good match for a small, fixed-core VM
     # -- more threads than physical cores just adds scheduling overhead.
