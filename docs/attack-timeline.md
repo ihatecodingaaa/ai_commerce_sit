@@ -289,10 +289,11 @@ cleanses is `key` and `blob` (nonce || ciphertext || tag): the one
 variable that "looked like the secret" got scrubbed, the two that
 together reconstruct it did not (CWE-226, Sensitive Information Uncleared
 Before Release, applied incompletely). So `opsuser` still has to pull
-`key` and `blob` back out of the core dump (`gdb`/`objdump`, by variable
-name since the binary isn't stripped) and run a real AES-256-GCM decrypt
-(`openssl enc -d -aes-256-gcm` or the `cryptography` package) to recover
-root's actual password, then `su -`.
+`key` and `blob` back out of the core dump (`gdb`, by variable name since
+the binary isn't stripped -- selecting `main`'s frame first, as the locals
+are out of scope at the `abort()`) and run a real AES-256-GCM decrypt (the
+`cryptography` package -- not `openssl enc`, which doesn't verify a GCM
+tag) to recover root's actual password, then `su -`.
 **Mechanism:** deterministic memory-forensics + cryptography exercise --
 not sudo-trust-boundary abuse (no sudo rule exists for `opsuser` at all),
 not a kernel CVE, and not the same bug class as Stage 11 -- deliberately

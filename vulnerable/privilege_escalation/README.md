@@ -86,10 +86,10 @@ blob don't look dangerous the way a plaintext password does, even though
 together they reconstruct it for free. This is CWE-226 (Sensitive
 Information Uncleared Before Release) applied *incompletely* -- a very
 realistic shape of fix, not a strawman. Recovering the password is
-forensics plus cryptography, not a shortcut: `gdb`/`objdump` on the core
-file to pull out `key` and `blob` by name (the binary isn't stripped),
-then one real `openssl enc -d -aes-256-gcm` (or a few lines of Python
-`cryptography`) to turn (key, nonce, tag, ciphertext) back into root's
+forensics plus cryptography, not a shortcut: `gdb` on the core file to
+pull out `key` and `blob` by name (the binary isn't stripped), then a real
+AEAD decrypt with Python `cryptography` (not `openssl enc`, which doesn't
+verify a GCM tag) to turn (key, nonce, tag, ciphertext) back into root's
 actual password.
 
 ## Expected student path
@@ -136,28 +136,33 @@ Hop 1):
     noticing *that* it's a dead end -- the obvious "just grep the dump"
     move doesn't work here, which is itself the signal to switch to real
     forensics instead of trying harder at `strings`/`grep`.
-11. Extract the actual bytes reliably with `gdb`:
+11. Extract the actual bytes reliably with `gdb` (verified working against
+    the deployed container):
     ```bash
     gdb -q -batch \
-        -ex "print/x *(unsigned char(*)[32])key" \
+        -ex "frame function main" \
+        -ex "dump binary memory key.bin  key  key+key_len" \
+        -ex "dump binary memory blob.bin blob blob+blob_len" \
         /opt/shop/scripts/rootwatch/rootwatch \
         /opt/shop/backups/diagnostics/rootwatch.core
     ```
-    (or dump the relevant memory region with `x/256bx $rsp` and locate the
-    32-byte key, 12-byte nonce, 16-byte tag, and ciphertext by their known
-    lengths/order -- `nonce || ciphertext || tag` in the on-disk blob,
-    `key` as a separate local in `main`'s frame.)
-12. Reassemble and decrypt:
-    ```bash
-    openssl enc -d -aes-256-gcm \
-        -K "$(xxd -p -c 64 key.bin)" \
-        -iv "$(xxd -p -c 64 nonce.bin)" \
-        -in ciphertext.bin -out password.txt
-    # (recent openssl `enc` needs the tag appended to -in, or use the
-    # `cryptography` package's AESGCM.decrypt(nonce, ct+tag, None) instead
-    # -- either is a legitimate route to the same plaintext.)
+    `frame function main` is required: at the `abort()` the innermost frame
+    is `abort`/`raise`, where `key`, `blob`, `key_len`, `blob_len` are all
+    out of scope (`print key` there gives "No symbol key in current
+    context"). Select `main`'s frame first. `key`/`blob` are `unsigned
+    char *` heap pointers, so dump the *pointed-to* bytes with `dump binary
+    memory <file> <start> <end>`, not `print key` (which shows only the
+    8-byte pointer). `blob.bin` is the whole on-disk blob:
+    `nonce(12) || ciphertext || tag(16)`.
+12. Decrypt. `openssl enc` does **not** verify a GCM tag, so use a real
+    AEAD call -- a few lines of Python `cryptography` (verified):
+    ```python
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    key  = open("key.bin",  "rb").read()          # 32 bytes
+    blob = open("blob.bin", "rb").read()
+    print(AESGCM(key).decrypt(blob[:12], blob[12:], None).decode())
     ```
-13. `su -` with the recovered password.
+13. `su -` with the recovered password (root's real account password).
 14. Read `/root/final_flag`.
 
 ## Why this is a good training vulnerability

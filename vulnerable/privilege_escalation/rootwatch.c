@@ -33,9 +33,10 @@
  * `plaintext` "looked like the secret" and `key`/`blob` "looked like
  * config" -- but a 32-byte AES key sitting next to the exact ciphertext
  * it opens is precisely as sensitive as the password it decrypts to, and
- * recovering it costs an attacker nothing but one `openssl enc -d
- * -aes-256-gcm` call. Scrubbing the plaintext and stopping there is a
- * very common, very real shape of incomplete fix.
+ * recovering it costs an attacker nothing but one AES-256-GCM decrypt call
+ * on the key/blob lifted from this process's core dump. Scrubbing the
+ * plaintext and stopping there is a very common, very real shape of
+ * incomplete fix.
  */
 #include <openssl/crypto.h>
 #include <openssl/evp.h>

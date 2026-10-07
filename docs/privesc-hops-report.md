@@ -170,21 +170,29 @@ post-mortems.
    isn't stripped):
    ```bash
    gdb -q -batch \
-       -ex "print/x *(unsigned char(*)[32])key" \
-       -ex "print/x *(unsigned char(*)[60])blob" \
+       -ex "frame function main" \
+       -ex "dump binary memory key.bin  key  key+key_len" \
+       -ex "dump binary memory blob.bin blob blob+blob_len" \
        /opt/shop/scripts/rootwatch/rootwatch \
        /opt/shop/backups/diagnostics/rootwatch.core
    ```
-   (`blob` = 12-byte nonce ‖ ciphertext ‖ 16-byte tag, in that order.)
-5. Reassemble and run a real AES-256-GCM decrypt:
-   ```bash
-   openssl enc -d -aes-256-gcm \
-       -K "$(xxd -p -c 64 key.bin)" \
-       -iv "$(xxd -p -c 64 nonce.bin)" \
-       -in ciphertext_and_tag.bin -out password.txt
-   # or: cryptography's AESGCM(key).decrypt(nonce, ciphertext+tag, None)
+   The `frame function main` is not optional: at the `abort()` the innermost
+   frame is `abort`/`raise`, where the locals `key`, `blob`, `key_len` and
+   `blob_len` are not in scope — select `main`'s frame first or gdb answers
+   "No symbol … in current context". `key` and `blob` are `unsigned char *`
+   heap pointers (from `read_file`'s `malloc`), so dump the *pointed-to*
+   bytes with `dump binary memory <file> <start> <end>`, not `print key`
+   (which would only show the 8-byte pointer). `blob.bin` comes out as the
+   whole on-disk blob: 12-byte nonce ‖ ciphertext ‖ 16-byte tag.
+5. Decrypt. `openssl enc` does not do GCM tag verification, so use a real
+   AEAD call — verified working:
+   ```python
+   from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+   key  = open("key.bin",  "rb").read()          # 32 bytes
+   blob = open("blob.bin", "rb").read()
+   print(AESGCM(key).decrypt(blob[:12], blob[12:], None).decode())
    ```
-6. `su -` with the recovered password.
+6. `su -` with the recovered password (it is root's real account password).
 7. `cat /root/final_flag`.
 
 **Real-world analogue:** a secret "encrypted at rest" whose key lives
@@ -198,32 +206,54 @@ and missed the two that actually were.
 
 ## What changed in this session
 
-The implementation already existed when this session started it was
-verified and one real defect was found and fixed, plus the trivial-shortcut
-closure you asked for:
+The Hop 2 rework was implemented, then deployed and **verified end-to-end
+against the live EC2 instance** (not just unit-tested). Along the way,
+four real defects were found and fixed — three of them only because the
+chain was actually run rather than read:
 
-1. **Fixed a build-breaking inconsistency.** `rootwatch.c` had been
-   mid-edited to write its own custom diagnostics file via an extra
-   argument, while `setup_privesc.sh`, the tests, and three docs files
-   all still assumed the original design (a real `gdb`-captured ELF core
-   from a genuine `abort()`). Left as found, provisioning would have
-   failed outright. Reverted `rootwatch.c` to match everything else.
-2. **Closed the `strings`-only shortcut.** `rootwatch` now cleanses
+1. **Closed the `strings`-only shortcut.** `rootwatch` now cleanses
    `plaintext` with `OPENSSL_cleanse()` right after use but never touches
-   `key`/`blob` — so recovering the password now requires the real
-   `gdb` + `openssl enc -d -aes-256-gcm` path; a shallow `strings`/`grep`
-   pass over the core dump no longer works. This is reflected consistently
-   across `rootwatch.c`, `tests/test_privilege_escalation.py`,
-   `docs/attack-timeline.md`, `docs/defensive-controls.md`, and
+   `key`/`blob` — so recovering the password requires the real `gdb` +
+   AEAD-decrypt path; a shallow `strings`/`grep` pass over the core dump
+   no longer yields the password. Reflected across `rootwatch.c`,
+   `tests/test_privilege_escalation.py`, `docs/attack-timeline.md`,
+   `docs/defensive-controls.md`, and
    `vulnerable/privilege_escalation/README.md`.
-3. **Verified:** `pytest tests/test_privilege_escalation.py -v` → 20
-   passed, 8 skipped (the skipped ones require the actual Linux container
-   — not available on this Windows host, and Docker isn't installed here
-   either). **Recommend running a full `docker compose build && docker
-   compose up -d` and then the live tests inside the container before
-   treating this as fully confirmed end-to-end** — static review and
-   logic-checking the C/OpenSSL calls is as far as this session could
-   verify directly.
+2. **Fixed a build-breaking Dockerfile gap.** `gcc` alone does not pull in
+   `libc6-dev` on the slim base image, so `rootwatch.c` failed to compile
+   (`stdlib.h: No such file or directory`) and the whole image build
+   aborted. Added `libc6-dev`.
+3. **Fixed three live-test bugs** that a non-container run never exercises:
+   a core-dump test that demanded group-unreadable (contradicting the
+   lab's own 440 convention under a dedicated single-member group); a
+   `/root/final_flag` test that errored instead of skipping when run
+   unprivileged (`Path.exists()` raises `PermissionError`, not `False`,
+   when `/root` blocks traversal); and a `passwd -S` test that only
+   skipped when the account was absent, not when the caller lacked root.
+   Full suite now: **28/28 as root, 26 pass / 2 skip as appuser**, inside
+   the deployed container.
+4. **Corrected the Hop 2 `gdb` command in the docs.** The earlier
+   `print/x *(unsigned char(*)[32])key` could never have worked: at the
+   `abort()` the selected frame is `abort`/`raise`, where `key`/`blob`
+   are out of scope. The verified command selects `main`'s frame and dumps
+   the pointed-to buffers (see the Hop 2 exploit steps above). `openssl
+   enc` was also dropped from the decrypt step — it does not verify GCM
+   tags — in favor of a real `AESGCM().decrypt(...)` call.
+
+**Live end-to-end result (HTTP-only, authorized lab, box reset to pristine
+afterward):** indirect prompt injection leaked the current catalog-sync
+token → crafted-filename command injection gave `uid=1000(appuser)` → the
+manifest-forging import hijack gave `uid=1001(opsuser)` and read the
+stage-2 flag → core-dump key recovery + AESGCM decrypt yielded root's real
+password → `su` returned `uid=0(root)` and read
+`/root/final_flag` (`AI-LAB{root_via_rootwatch_coredump_aesgcm_key_recovery}`).
+One delivery detail worth recording for anyone reproducing it externally:
+the upload filename is the injected command, and `api_images`
+`_weak_sanitize_filename` bans `/` and `..` while the filesystem caps a
+filename at 255 bytes — so a large payload (both hops) must be delivered
+by appending a `base32`-encoded copy to a staging file across many small
+uploads, then decoded (`base32 -d`) and run. A single-shot filename only
+fits a short command like the Stage-9 `id` proof.
 
 ## Rotation — explicitly not implemented
 

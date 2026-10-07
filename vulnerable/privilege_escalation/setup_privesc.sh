@@ -23,11 +23,12 @@
 #   shows nothing. Instead, opsuser can read a core dump
 #   (backups/diagnostics/rootwatch.core) left behind by `rootwatch`, a
 #   health-check tool that decrypts root's real account password from an
-#   AES-256-GCM-"protected" blob using a key stored right next to it, then
-#   crashes before clearing that memory. Encryption-at-rest with no real
-#   key custody, plus a secret left live in memory past its use, hands
-#   opsuser root's actual password via `gdb`/`strings` forensics and one
-#   `openssl enc -d -aes-256-gcm` -- then `su -`.
+#   AES-256-GCM-"protected" blob using a key stored right next to it. It
+#   scrubs the decrypted password after use (so `strings` on the dump finds
+#   nothing) but never scrubs the key or ciphertext, then crashes. With no
+#   real key custody, the key+blob left live in memory hand opsuser root's
+#   actual password via `gdb` forensics on the core dump and one real
+#   AES-256-GCM decrypt -- then `su -`.
 #
 # See archive_worker.py, rootwatch.c, gen_root_secret.py, and README.md
 # for the full writeup.
