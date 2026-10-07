@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libcap2-bin \
         imagemagick \
         gcc \
+        libc6-dev \
         libssl-dev \
         gdb \
         binutils \
