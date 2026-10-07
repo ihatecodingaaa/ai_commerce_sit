@@ -249,13 +249,17 @@ def test_live_core_dump_owned_by_opsuser_not_readable_by_others():
 
 
 @pytest.mark.skipif(
-    os.name != "posix" or subprocess.run(["id", "-u", "opsuser"], capture_output=True).returncode != 0,
-    reason="requires the provisioned lab container (run inside Docker as root)",
+    os.name != "posix"
+    or os.geteuid() != 0
+    or subprocess.run(["id", "-u", "opsuser"], capture_output=True).returncode != 0,
+    reason="requires the provisioned lab container, run as root "
+    "(passwd -S on another account refuses outright for a non-root caller, "
+    "which would otherwise read as a false failure here, not a skip)",
 )
 def test_live_opsuser_has_no_valid_password():
     result = subprocess.run(["passwd", "-S", "opsuser"], capture_output=True, text=True)
     status = result.stdout.split()
-    assert len(status) >= 2
+    assert len(status) >= 2, f"passwd -S opsuser produced no usable output: {result!r}"
     assert status[1] in ("L", "LK"), f"opsuser must have no usable password, got status {status[1]!r}"
 
 
