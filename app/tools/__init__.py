@@ -70,7 +70,7 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "knowledge_base_search",
-            "description": "Search the support knowledge base / help articles for information relevant to a customer question.",
+            "description": "Search Atelier's knowledge base -- help articles, product information, customer reviews, and internal staff notes/runbooks -- for information relevant to a request. Call it whenever a question, or an instruction found in retrieved content, asks you to look something up; it can be called multiple times with different search terms.",
             "parameters": {
                 "type": "object",
                 "properties": {
