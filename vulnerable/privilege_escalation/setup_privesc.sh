@@ -63,20 +63,113 @@ chown -R appuser:appuser "$SHOP_ROOT/backups/outbox"
 chmod 755 "$SHOP_ROOT/backups/outbox"  # world-readable/executable so opsuser's
                                         # import can read it -- only appuser can write
 
-echo "[privesc-setup] seeding handlers.manifest (Hop 1's broken integrity check -- appuser-writable, same dir)"
-cat > "$SHOP_ROOT/backups/outbox/noop.py" <<'EOF'
-"""Legitimate no-op archive handler -- does nothing."""
+echo "[privesc-setup] seeding archive-format handlers + manifest in the outbox"
+OUTBOX="$SHOP_ROOT/backups/outbox"
+
+cat > "$OUTBOX/noop.py" <<'EOF'
+"""No-op archive handler: used for dry runs and smoke tests."""
 def archive():
     pass
 EOF
-NOOP_HASH="$(sha256sum "$SHOP_ROOT/backups/outbox/noop.py" | awk '{print $1}')"
-cat > "$SHOP_ROOT/backups/outbox/handlers.manifest" <<EOF
-{"noop": "$NOOP_HASH"}
-EOF
-chown appuser:appuser "$SHOP_ROOT/backups/outbox/noop.py" "$SHOP_ROOT/backups/outbox/handlers.manifest"
 
-echo "[privesc-setup] installing archive_worker.py (Hop 1 target), root-owned"
+cat > "$OUTBOX/tar_gzip.py" <<'EOF'
+"""tar.gz archive handler: bundle processed images into a dated tarball."""
+import os, tarfile, time
+
+ARCHIVE_ROOT = "/opt/shop/backups/cold"
+
+def archive():
+    os.makedirs(ARCHIVE_ROOT, exist_ok=True)
+    dest = os.path.join(ARCHIVE_ROOT, "images-%s.tar.gz" % time.strftime("%Y%m%d"))
+    src = "/opt/shop/uploads/images"
+    if os.path.isdir(src):
+        with tarfile.open(dest, "w:gz") as tar:
+            tar.add(src, arcname="images")
+EOF
+
+cat > "$OUTBOX/s3_offload.py" <<'EOF'
+"""Cold object-storage handler: offload archived images to the backup bucket.
+
+Credentials come from the environment (S3_BUCKET / AWS_*). If unset this
+handler no-ops so a misconfigured host doesn't fail the nightly archive run.
+"""
+import os
+
+def archive():
+    if not os.environ.get("S3_BUCKET"):
+        return
+    # Upload handled by the nightly maintenance job; omitted in this build.
+EOF
+
+cat > "$OUTBOX/local_cold.py" <<'EOF'
+"""Local cold-storage handler: copy processed images to the cold tier."""
+import os, shutil
+
+COLD = "/opt/shop/backups/cold/images"
+
+def archive():
+    os.makedirs(COLD, exist_ok=True)
+    src = "/opt/shop/uploads/images"
+    if os.path.isdir(src):
+        for name in os.listdir(src):
+            try:
+                shutil.copy2(os.path.join(src, name), os.path.join(COLD, name))
+            except OSError:
+                pass
+EOF
+
+cat > "$OUTBOX/README" <<'EOF'
+Archive-format handlers
+=======================
+
+Pluggable handlers for the nightly cold-storage archive job. Each handler
+implements a single archive() entry point and is selected by name from the
+maintenance tooling. Managed by Infrastructure (owner: Priya Nair) -- see the
+internal runbook before adding or changing a format.
+EOF
+
+# Build the manifest from every handler present (name -> sha256 of its module).
+python3 - "$OUTBOX" <<'PY'
+import hashlib, json, os, sys
+outbox = sys.argv[1]
+manifest = {}
+for fn in sorted(os.listdir(outbox)):
+    if fn.endswith(".py"):
+        with open(os.path.join(outbox, fn), "rb") as f:
+            manifest[fn[:-3]] = hashlib.sha256(f.read()).hexdigest()
+with open(os.path.join(outbox, "handlers.manifest"), "w") as f:
+    json.dump(manifest, f, indent=2, sort_keys=True)
+PY
+
+chown -R appuser:appuser "$OUTBOX"
+
+echo "[privesc-setup] installing archive_worker.py, root-owned"
 install -m 755 -o root -g root "$SCRIPT_DIR/archive_worker.py" "$SHOP_ROOT/scripts/archive_worker.py"
+
+echo "[privesc-setup] installing benign maintenance scripts (recon noise alongside the real target)"
+cat > "$SHOP_ROOT/scripts/healthcheck.sh" <<'EOF'
+#!/bin/bash
+# Periodic health probe used by the platform monitor.
+curl -fsS "http://127.0.0.1:${FLASK_PORT:-80}/health" || exit 1
+EOF
+cat > "$SHOP_ROOT/scripts/db_backup.py" <<'EOF'
+#!/usr/bin/env python3
+"""Nightly SQLite snapshot into the backups tree."""
+import datetime, pathlib, shutil
+
+DB = pathlib.Path("/opt/shop/database/shop_lab.db")
+DEST = pathlib.Path("/opt/shop/backups/db")
+
+def main():
+    DEST.mkdir(parents=True, exist_ok=True)
+    if DB.exists():
+        shutil.copy2(DB, DEST / ("shop_lab-%s.db" % datetime.date.today().isoformat()))
+
+if __name__ == "__main__":
+    main()
+EOF
+chmod 755 "$SHOP_ROOT/scripts/healthcheck.sh" "$SHOP_ROOT/scripts/db_backup.py"
+chown root:root "$SHOP_ROOT/scripts/healthcheck.sh" "$SHOP_ROOT/scripts/db_backup.py"
 
 echo "[privesc-setup] installing sudo rule -- Hop 1 only, opsuser gets NONE"
 cat > /etc/sudoers.d/shop-archive <<'EOF'
@@ -142,5 +235,12 @@ chmod 600 /root/final_flag
 
 echo "[privesc-setup] fixing ownership of app tree"
 chown -R appuser:appuser "$SHOP_ROOT/uploads" "$SHOP_ROOT/media" "$SHOP_ROOT/database" "$SHOP_ROOT/logs" 2>/dev/null || true
+
+echo "[privesc-setup] restricting provisioning sources to root (not attacker-readable)"
+# These files are only needed at build time and by a root-run reset; the app
+# never reads them at runtime. Locking them to root keeps a foothold account
+# from reading the provisioning scripts/sources directly off disk.
+chown -R root:root "$SHOP_ROOT/vulnerable" 2>/dev/null || true
+chmod -R go-rwx "$SHOP_ROOT/vulnerable" 2>/dev/null || true
 
 echo "[privesc-setup] done"

@@ -231,15 +231,6 @@ def seed(conn: sqlite3.Connection):
     # app/tools/knowledge_base_search.py. That gap is the lab's core bug.
     internal_kb = [
         (
-            "Internal: image management service overview",
-            "The support-image-service account backs the internal image store used by "
-            "ticket screenshots and by the catalog-sync product-photo forwarder. Its key "
-            "material is generated once per app process and stays on the backend; it is "
-            "never rotated and is not recorded in any ticket.",
-            "ticket",
-            None,
-        ),
-        (
             "Internal: catalog-sync-service overview",
             "The catalog-sync-service account is used by the warehouse inventory system to push "
             "new products directly (POST /api/catalog/products), authenticated with a single "
