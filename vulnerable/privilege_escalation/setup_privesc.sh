@@ -237,10 +237,13 @@ echo "[privesc-setup] fixing ownership of app tree"
 chown -R appuser:appuser "$SHOP_ROOT/uploads" "$SHOP_ROOT/media" "$SHOP_ROOT/database" "$SHOP_ROOT/logs" 2>/dev/null || true
 
 echo "[privesc-setup] restricting provisioning sources to root (not attacker-readable)"
-# These files are only needed at build time and by a root-run reset; the app
-# never reads them at runtime. Locking them to root keeps a foothold account
-# from reading the provisioning scripts/sources directly off disk.
-chown -R root:root "$SHOP_ROOT/vulnerable" 2>/dev/null || true
-chmod -R go-rwx "$SHOP_ROOT/vulnerable" 2>/dev/null || true
+# Only the privilege_escalation/ provisioning sources are locked: they are
+# needed just at build time and by a root-run reset, and the app never imports
+# them. NOTE: do NOT lock the whole vulnerable/ tree -- the app imports
+# vulnerable.upload.image_processor at runtime (as appuser), so vulnerable/ and
+# vulnerable/upload/ must stay readable/traversable.
+chown -R root:root "$SHOP_ROOT/vulnerable/privilege_escalation" 2>/dev/null || true
+chmod 700 "$SHOP_ROOT/vulnerable/privilege_escalation" 2>/dev/null || true
+chmod -R go-rwx "$SHOP_ROOT/vulnerable/privilege_escalation" 2>/dev/null || true
 
 echo "[privesc-setup] done"
