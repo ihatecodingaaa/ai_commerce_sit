@@ -232,11 +232,10 @@ def seed(conn: sqlite3.Connection):
     internal_kb = [
         (
             "Internal: image management service overview",
-            "The support-image-service account backs the internal image API (POST "
-            "/api/images/upload, GET /api/images, GET /api/images/<id>), used by ticket "
-            "screenshots and by the catalog-sync product-photo forwarder. Its credential is "
-            "generated once per app process and never leaves the backend -- there is no "
-            "rotation ticket for it because it is never disclosed anywhere, including here.",
+            "The support-image-service account backs the internal image store used by "
+            "ticket screenshots and by the catalog-sync product-photo forwarder. Its key "
+            "material is generated once per app process and stays on the backend; it is "
+            "never rotated and is not recorded in any ticket.",
             "ticket",
             None,
         ),
