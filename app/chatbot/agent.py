@@ -1,15 +1,11 @@
 """Chatbot orchestration: user <-> Ollama <-> tools <-> database.
 
-Trust-boundary design (see docs/defensive-controls.md):
-  - The model NEVER receives database credentials or direct DB access.
-  - For SCOPED_TOOLS, this module -- not the model -- decides whose data is
-    being requested: it always injects the authenticated session user's id
-    and strips any user_id/customer_id argument the model tried to supply.
-  - knowledge_base_search has no such scoping (see app/tools/knowledge_base_search.py).
-    That single gap is the lab's deliberate vulnerability.
+The model never receives database credentials or direct DB access. For
+SCOPED_TOOLS, this module (not the model) injects the authenticated
+session user's id and strips any user_id/customer_id the model supplied.
 
-Conversation state is kept in-memory per logged-in user id. This is a lab,
-not a production chat service -- history is not persisted across restarts.
+Conversation state is kept in-memory per logged-in user id and is not
+persisted across restarts.
 """
 import json
 
@@ -33,12 +29,9 @@ def _allowed_arg_keys(tool_name: str) -> set:
 
 
 def _history_has_untrusted_kb_hit(history: list[dict]) -> bool:
-    """True once this conversation has already ingested a
-    knowledge_base_search result sourced from untrusted, customer-submitted
-    content (a review) -- see app/tools/knowledge_base_search.py for why
-    this is what actually gates internal-visibility disclosure. Checked
-    fresh on every tool call, never cached, so it reflects exactly what's
-    in `history` so far, not what the model claims.
+    """True once this conversation has ingested a knowledge_base_search
+    result whose source is a customer review. Checked fresh on every tool
+    call so it reflects the current `history`.
     """
     for msg in history:
         if msg.get("role") != "tool" or msg.get("name") != "knowledge_base_search":
@@ -165,11 +158,6 @@ def handle_chat_message(user: dict, user_message: str, request_id: str) -> str:
                     source=f"tool_result:{tool_name}",
                 )
 
-            # The retrieved tool result is appended to the conversation as
-            # plain conversational context, exactly like a normal message --
-            # there is no separate "untrusted data" channel. This is what
-            # lets injected instructions inside retrieved content influence
-            # subsequent model behavior.
             history.append({"role": "tool", "name": tool_name, "content": result_text})
 
     if final_text is None:

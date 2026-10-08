@@ -1,12 +1,9 @@
 """Lightweight keyword-relevance retrieval.
 
-This intentionally is NOT a vector/embedding pipeline -- a 4 GiB, GPU-less
-EC2 instance running Ollama alongside the app has little room for an
-embedding model too. A simple term-overlap scorer demonstrates exactly the
-same security property a "real" RAG pipeline would have: whatever content
-scores highest for a query gets inserted into the LLM's context, verbatim,
-with no distinction between "written by support staff" and "written by a
-customer".
+A simple term-overlap scorer rather than a vector/embedding pipeline, which
+keeps memory use low on a small single-box deployment. Whatever content
+scores highest for a query is returned for insertion into the model's
+context.
 """
 import re
 
@@ -28,10 +25,8 @@ def _tokens(text: str):
 def index_content_as_kb(title: str, body: str, source: str, source_id: int, visibility: str = "public"):
     """Persist a piece of content into the searchable knowledge base.
 
-    Used for seed FAQ/runbook articles AND for auto-indexing customer
-    reviews (the attacker-controlled content injection surface). Nothing
-    here sanitizes or inspects `body` for embedded instructions -- it is
-    stored and later retrieved exactly as submitted.
+    Used for seed FAQ/runbook articles and for auto-indexing customer
+    reviews. Content is stored and later retrieved as submitted.
     """
     return execute(
         "INSERT INTO kb_articles (title, body, visibility, source, source_id) VALUES (?, ?, ?, ?, ?)",
@@ -41,9 +36,7 @@ def index_content_as_kb(title: str, body: str, source: str, source_id: int, visi
 
 def update_kb_content(source: str, source_id: int, title: str = None, body: str = None):
     """Update the KB article mirroring a piece of source content (e.g. an
-    edited review) so retrieval always reflects current content -- same
-    trust-boundary property as index_content_as_kb: nothing here sanitizes
-    the new body either.
+    edited review) so retrieval always reflects current content.
     """
     if title is not None:
         execute(
@@ -65,10 +58,8 @@ def delete_kb_content(source: str, source_id: int):
 def search_articles(query: str, visibility_filter: str | None = "public", limit: int = 5):
     """Score every kb_articles row against `query` by term overlap.
 
-    visibility_filter='public'  -> only customer-facing articles (correct
-                                    behavior for any *customer-scoped* use).
-    visibility_filter=None      -> no filter at all (used by
-                                    knowledge_base_search -- the bug).
+    visibility_filter='public'  -> only customer-facing articles.
+    visibility_filter=None      -> no visibility filter.
     """
     q_tokens = set(_tokens(query))
     if not q_tokens:
